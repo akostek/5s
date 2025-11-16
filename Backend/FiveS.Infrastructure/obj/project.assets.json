@@ -3853,11 +3853,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Infrastructure\\FiveS.Infrastructure.csproj",
+      "projectUniqueName": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Infrastructure\\FiveS.Infrastructure.csproj",
       "projectName": "FiveS.Infrastructure",
-      "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Infrastructure\\FiveS.Infrastructure.csproj",
+      "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Infrastructure\\FiveS.Infrastructure.csproj",
       "packagesPath": "C:\\Users\\akostek\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Infrastructure\\obj\\",
+      "outputPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Infrastructure\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\akostek\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -3872,8 +3872,8 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Domain\\FiveS.Domain.csproj": {
-              "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Domain\\FiveS.Domain.csproj"
+            "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Domain\\FiveS.Domain.csproj": {
+              "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Domain\\FiveS.Domain.csproj"
             }
           }
         }

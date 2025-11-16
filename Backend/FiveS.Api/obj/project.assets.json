@@ -9186,11 +9186,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Api\\FiveS.Api.csproj",
+      "projectUniqueName": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Api\\FiveS.Api.csproj",
       "projectName": "FiveS.Api",
-      "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Api\\FiveS.Api.csproj",
+      "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Api\\FiveS.Api.csproj",
       "packagesPath": "C:\\Users\\akostek\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Api\\obj\\",
+      "outputPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Api\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\akostek\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -9205,11 +9205,11 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Application\\FiveS.Application.csproj": {
-              "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Application\\FiveS.Application.csproj"
+            "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Application\\FiveS.Application.csproj": {
+              "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Application\\FiveS.Application.csproj"
             },
-            "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Infrastructure\\FiveS.Infrastructure.csproj": {
-              "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Infrastructure\\FiveS.Infrastructure.csproj"
+            "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Infrastructure\\FiveS.Infrastructure.csproj": {
+              "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Infrastructure\\FiveS.Infrastructure.csproj"
             }
           }
         }

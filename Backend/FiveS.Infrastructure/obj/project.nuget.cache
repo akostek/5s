@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "1IcUvhVxbK4=",
+  "dgSpecHash": "NHr4lwUsuKM=",
   "success": true,
-  "projectFilePath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Infrastructure\\FiveS.Infrastructure.csproj",
+  "projectFilePath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Infrastructure\\FiveS.Infrastructure.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\akostek\\.nuget\\packages\\azure.core\\1.25.0\\azure.core.1.25.0.nupkg.sha512",
     "C:\\Users\\akostek\\.nuget\\packages\\azure.identity\\1.7.0\\azure.identity.1.7.0.nupkg.sha512",

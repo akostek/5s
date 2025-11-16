@@ -53,7 +53,7 @@ namespace FiveS.Infrastructure.Services
             var expirationHours = Environment.GetEnvironmentVariable("JWT_EXPIRATION_HOURS")
                 ?? _configuration["Jwt:ExpirationHours"]
                 ?? "24";
-            
+
             var token = new JwtSecurityToken(
                 issuer: jwtIssuer,
                 audience: jwtAudience,

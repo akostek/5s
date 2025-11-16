@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Domain\\FiveS.Domain.csproj": {}
+    "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Domain\\FiveS.Domain.csproj": {}
   },
   "projects": {
-    "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Domain\\FiveS.Domain.csproj": {
+    "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Domain\\FiveS.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Domain\\FiveS.Domain.csproj",
+        "projectUniqueName": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Domain\\FiveS.Domain.csproj",
         "projectName": "FiveS.Domain",
-        "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Domain\\FiveS.Domain.csproj",
+        "projectPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Domain\\FiveS.Domain.csproj",
         "packagesPath": "C:\\Users\\akostek\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\Backend\\FiveS.Domain\\obj\\",
+        "outputPath": "C:\\Users\\akostek\\Desktop\\5S_Güncel - Copy (2)\\backend\\FiveS.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\akostek\\AppData\\Roaming\\NuGet\\NuGet.Config"
