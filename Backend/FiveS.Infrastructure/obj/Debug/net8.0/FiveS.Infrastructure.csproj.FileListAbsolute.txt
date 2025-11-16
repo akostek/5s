@@ -1,0 +1,51 @@
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.deps.json
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.runtimeconfig.json
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.dll
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.pdb
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Domain.dll
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Domain.pdb
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.csproj.AssemblyReference.cache
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.AssemblyInfoInputs.cache
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.AssemblyInfo.cs
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.csproj.CoreCompileInputs.cache
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.In.3FE15237.Up2Date
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.dll
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\obj\Debug\net8.0\refint\FiveS.Infrastructure.dll
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.pdb
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.genruntimeconfig.cache
+D:\yedek\5s yedek son\5S-Corporate-Platform\src\Backend\FiveS.Infrastructure\obj\Debug\net8.0\ref\FiveS.Infrastructure.dll
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.deps.json
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.runtimeconfig.json
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.dll
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.pdb
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Domain.dll
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Domain.pdb
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.AssemblyInfo.cs
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.In.3FE15237.Up2Date
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.dll
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\obj\Debug\net8.0\refint\FiveS.Infrastructure.dll
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.pdb
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.genruntimeconfig.cache
+C:\Users\akostek\Desktop\5S_Güncel\Backend\FiveS.Infrastructure\obj\Debug\net8.0\ref\FiveS.Infrastructure.dll
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.deps.json
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.runtimeconfig.json
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.dll
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Infrastructure.pdb
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Domain.dll
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\bin\Debug\net8.0\FiveS.Domain.pdb
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.AssemblyInfo.cs
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.In.3FE15237.Up2Date
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.dll
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\refint\FiveS.Infrastructure.dll
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.pdb
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.genruntimeconfig.cache
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\ref\FiveS.Infrastructure.dll
