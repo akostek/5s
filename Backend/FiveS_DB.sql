@@ -2,6 +2,7 @@
 -- 5S DENETİM SİSTEMİ - VERİTABANI ŞEMASI
 -- ============================================
 -- Bu dosya tüm veritabanı tablolarının şemasını içerir
+-- Entity Framework Configuration dosyalarından oluşturulmuştur
 -- Oluşturulma Tarihi: 2025-01-XX
 -- PostgreSQL 8.0+
 -- ============================================
@@ -18,37 +19,21 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Roller Tablosu
 CREATE TABLE IF NOT EXISTS "Roller" (
     "Id" SERIAL PRIMARY KEY,
-    "Ad" VARCHAR(100) NOT NULL UNIQUE,
+    "Ad" VARCHAR(255) NOT NULL UNIQUE,
+    "Aciklama" VARCHAR(1000) NULL,
+    "Aktif" BOOLEAN NOT NULL DEFAULT TRUE,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL
 );
 
--- Kullanıcılar Tablosu
-CREATE TABLE IF NOT EXISTS "Kullanicilar" (
-    "Id" SERIAL PRIMARY KEY,
-    "Email" VARCHAR(255) NOT NULL UNIQUE,
-    "PasswordHash" TEXT NOT NULL,
-    "Name" VARCHAR(200) NOT NULL,
-    "Username" VARCHAR(100) NULL,
-    "Sicil" VARCHAR(50) NULL,
-    "SectorId" INTEGER NULL,
-    "DirectorateId" INTEGER NULL,
-    "RoleId" INTEGER NOT NULL,
-    "DepartmentId" INTEGER NULL,
-    "IsActive" BOOLEAN NOT NULL DEFAULT TRUE,
-    "LastLogin" TIMESTAMP WITH TIME ZONE NULL,
-    "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL,
-    CONSTRAINT "FK_Kullanicilar_Roller" FOREIGN KEY ("RoleId") REFERENCES "Roller"("Id") ON DELETE RESTRICT,
-    CONSTRAINT "FK_Kullanicilar_Sektorler" FOREIGN KEY ("SectorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL,
-    CONSTRAINT "FK_Kullanicilar_Direktorlukler" FOREIGN KEY ("DirectorateId") REFERENCES "Direktorlukler"("Id") ON DELETE SET NULL,
-    CONSTRAINT "FK_Kullanicilar_Bolumler" FOREIGN KEY ("DepartmentId") REFERENCES "Bolumler"("Id") ON DELETE SET NULL
-);
+CREATE INDEX IF NOT EXISTS "IX_Roller_Ad" ON "Roller"("Ad");
 
 -- Sektorler Tablosu
 CREATE TABLE IF NOT EXISTS "Sektorler" (
     "Id" SERIAL PRIMARY KEY,
-    "Name" VARCHAR(200) NOT NULL,
+    "SektorAdi" VARCHAR(100) NOT NULL,
+    "Aciklama" VARCHAR(500) NULL,
+    "Aktif" BOOLEAN NOT NULL DEFAULT TRUE,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL
 );
@@ -56,42 +41,61 @@ CREATE TABLE IF NOT EXISTS "Sektorler" (
 -- Direktorlukler Tablosu
 CREATE TABLE IF NOT EXISTS "Direktorlukler" (
     "Id" SERIAL PRIMARY KEY,
-    "Name" VARCHAR(200) NOT NULL,
+    "DirektorlukAdi" VARCHAR(100) NOT NULL,
     "SektorId" INTEGER NULL,
+    "Aciklama" VARCHAR(500) NULL,
+    "Aktif" BOOLEAN NOT NULL DEFAULT TRUE,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL,
     CONSTRAINT "FK_Direktorlukler_Sektorler" FOREIGN KEY ("SektorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL
 );
 
+CREATE INDEX IF NOT EXISTS "IX_Direktorlukler_SektorId" ON "Direktorlukler"("SektorId");
+
 -- Bolumler Tablosu
 CREATE TABLE IF NOT EXISTS "Bolumler" (
     "Id" SERIAL PRIMARY KEY,
-    "Name" VARCHAR(200) NOT NULL,
-    "SectorId" INTEGER NULL,
-    "DirectorateId" INTEGER NULL,
+    "BolumAdi" VARCHAR(255) NOT NULL UNIQUE,
+    "SektorId" INTEGER NULL,
+    "DirektorlukId" INTEGER NULL,
+    "Aciklama" VARCHAR(1000) NULL,
+    "Aktif" BOOLEAN NOT NULL DEFAULT TRUE,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL,
-    CONSTRAINT "FK_Bolumler_Sektorler" FOREIGN KEY ("SectorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL,
-    CONSTRAINT "FK_Bolumler_Direktorlukler" FOREIGN KEY ("DirectorateId") REFERENCES "Direktorlukler"("Id") ON DELETE SET NULL
+    CONSTRAINT "FK_Bolumler_Sektorler" FOREIGN KEY ("SektorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Bolumler_Direktorlukler" FOREIGN KEY ("DirektorlukId") REFERENCES "Direktorlukler"("Id") ON DELETE SET NULL
 );
+
+CREATE INDEX IF NOT EXISTS "IX_Bolumler_BolumAdi" ON "Bolumler"("BolumAdi");
+CREATE INDEX IF NOT EXISTS "IX_Bolumler_SectorId" ON "Bolumler"("SektorId");
+CREATE INDEX IF NOT EXISTS "IX_Bolumler_DirectorateId" ON "Bolumler"("DirektorlukId");
 
 -- Alanlar Tablosu
 CREATE TABLE IF NOT EXISTS "Alanlar" (
     "Id" SERIAL PRIMARY KEY,
-    "Name" VARCHAR(200) NOT NULL,
-    "DepartmentId" INTEGER NOT NULL,
+    "AlanAdi" VARCHAR(255) NOT NULL,
+    "BolumId" INTEGER NOT NULL,
+    "SektorId" INTEGER NULL,
+    "DirektorlukId" INTEGER NULL,
+    "Aciklama" VARCHAR(1000) NULL,
+    "Sorumlu" VARCHAR(200) NULL,
+    "Aktif" BOOLEAN NOT NULL DEFAULT TRUE,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL,
-    CONSTRAINT "FK_Alanlar_Bolumler" FOREIGN KEY ("DepartmentId") REFERENCES "Bolumler"("Id") ON DELETE RESTRICT
+    CONSTRAINT "FK_Alanlar_Bolumler" FOREIGN KEY ("BolumId") REFERENCES "Bolumler"("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_Alanlar_Sektorler" FOREIGN KEY ("SektorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Alanlar_Direktorlukler" FOREIGN KEY ("DirektorlukId") REFERENCES "Direktorlukler"("Id") ON DELETE SET NULL
 );
+
+CREATE INDEX IF NOT EXISTS "IX_Alanlar_DepartmentId" ON "Alanlar"("BolumId");
 
 -- Kategoriler Tablosu
 CREATE TABLE IF NOT EXISTS "Kategoriler" (
     "Id" SERIAL PRIMARY KEY,
-    "Name" VARCHAR(200) NOT NULL,
-    "Description" TEXT NULL,
-    "OrderIndex" INTEGER NOT NULL DEFAULT 0,
-    "IsActive" BOOLEAN NOT NULL DEFAULT TRUE,
+    "KategoriAdi" VARCHAR(255) NOT NULL,
+    "Aciklama" VARCHAR(1000) NULL,
+    "Sira" INTEGER NOT NULL DEFAULT 0,
+    "Aktif" BOOLEAN NOT NULL DEFAULT TRUE,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL
 );
@@ -99,54 +103,98 @@ CREATE TABLE IF NOT EXISTS "Kategoriler" (
 -- Sorular Tablosu
 CREATE TABLE IF NOT EXISTS "Sorular" (
     "Id" SERIAL PRIMARY KEY,
-    "CategoryId" INTEGER NOT NULL,
-    "Text" TEXT NOT NULL,
-    "Sector" VARCHAR(100) NULL,
-    "Directorate" VARCHAR(200) NULL,
-    "Department" VARCHAR(200) NULL,
-    "Area" VARCHAR(200) NULL,
-    "OrderIndex" INTEGER NOT NULL DEFAULT 0,
-    "PointsHigh" INTEGER NOT NULL DEFAULT 10,
-    "PointsMedium" INTEGER NOT NULL DEFAULT 5,
-    "PointsLow" INTEGER NOT NULL DEFAULT 0,
-    "IsActive" BOOLEAN NOT NULL DEFAULT TRUE,
+    "KategoriId" INTEGER NOT NULL,
+    "SoruMetni" VARCHAR(1000) NOT NULL,
+    "Sektor" VARCHAR(100) NULL,
+    "Direktorluk" VARCHAR(200) NULL,
+    "Bolum" VARCHAR(200) NULL,
+    "Alan" VARCHAR(200) NULL,
+    "Sira" INTEGER NOT NULL DEFAULT 0,
+    "YuksekPuan" INTEGER NOT NULL DEFAULT 10,
+    "OrtaPuan" INTEGER NOT NULL DEFAULT 5,
+    "DusukPuan" INTEGER NOT NULL DEFAULT 0,
+    "Aktif" BOOLEAN NOT NULL DEFAULT TRUE,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL,
-    CONSTRAINT "FK_Sorular_Kategoriler" FOREIGN KEY ("CategoryId") REFERENCES "Kategoriler"("Id") ON DELETE RESTRICT
+    CONSTRAINT "FK_Sorular_Kategoriler" FOREIGN KEY ("KategoriId") REFERENCES "Kategoriler"("Id") ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS "IX_Sorular_CategoryId" ON "Sorular"("KategoriId");
+
+-- Kullanicilar Tablosu
+CREATE TABLE IF NOT EXISTS "Kullanicilar" (
+    "Id" SERIAL PRIMARY KEY,
+    "Email" VARCHAR(255) NOT NULL UNIQUE,
+    "Sifre" TEXT NOT NULL,
+    "AdSoyad" VARCHAR(255) NOT NULL,
+    "KullaniciAdi" VARCHAR(100) NULL,
+    "SicilNo" VARCHAR(50) NULL,
+    "SektorId" INTEGER NULL,
+    "DirektorlukId" INTEGER NULL,
+    "RolId" INTEGER NOT NULL,
+    "BolumId" INTEGER NULL,
+    "Aktif" BOOLEAN NOT NULL DEFAULT TRUE,
+    "SonGiris" TIMESTAMP WITH TIME ZONE NULL,
+    "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL,
+    CONSTRAINT "FK_Kullanicilar_Roller" FOREIGN KEY ("RolId") REFERENCES "Roller"("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_Kullanicilar_Sektorler" FOREIGN KEY ("SektorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Kullanicilar_Direktorlukler" FOREIGN KEY ("DirektorlukId") REFERENCES "Direktorlukler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Kullanicilar_Bolumler" FOREIGN KEY ("BolumId") REFERENCES "Bolumler"("Id") ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS "IX_Kullanicilar_Email" ON "Kullanicilar"("Email");
+CREATE INDEX IF NOT EXISTS "IX_Kullanicilar_KullaniciAdi" ON "Kullanicilar"("KullaniciAdi");
+CREATE INDEX IF NOT EXISTS "IX_Kullanicilar_RoleId" ON "Kullanicilar"("RolId");
+CREATE INDEX IF NOT EXISTS "IX_Kullanicilar_SectorId" ON "Kullanicilar"("SektorId");
+CREATE INDEX IF NOT EXISTS "IX_Kullanicilar_DirectorateId" ON "Kullanicilar"("DirektorlukId");
+CREATE INDEX IF NOT EXISTS "IX_Kullanicilar_DepartmentId" ON "Kullanicilar"("BolumId");
 
 -- Denetimler Tablosu
 CREATE TABLE IF NOT EXISTS "Denetimler" (
     "Id" SERIAL PRIMARY KEY,
-    "DepartmentId" INTEGER NOT NULL,
-    "AreaId" INTEGER NULL,
-    "SectorId" INTEGER NULL,
-    "DirectorateId" INTEGER NULL,
-    "AuditorId" INTEGER NOT NULL,
-    "PlannedDate" DATE NULL,
-    "CompletedDate" DATE NULL,
-    "Status" VARCHAR(50) NOT NULL DEFAULT 'planlandı',
-    "TotalScore" INTEGER NOT NULL DEFAULT 0,
-    "MaxPossibleScore" INTEGER NOT NULL DEFAULT 0,
-    "LevelAchieved" VARCHAR(50) NULL,
-    "Notes" TEXT NULL,
+    "BolumId" INTEGER NOT NULL,
+    "SektorId" INTEGER NULL,
+    "DirektorlukId" INTEGER NULL,
+    "DenetciId" INTEGER NOT NULL,
+    "AlanId" INTEGER NULL,
+    "AlanSorumlusu" VARCHAR(200) NULL,
+    "DenetimTarihi" DATE NULL,
+    "Notlar" VARCHAR(2000) NULL,
+    "Durum" VARCHAR(50) NOT NULL DEFAULT 'planlandı',
+    "ToplamPuan" INTEGER NOT NULL DEFAULT 0,
+    "MaksimumPuan" INTEGER NOT NULL DEFAULT 0,
+    "UlasilanSeviye" VARCHAR(50) NULL,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL,
-    CONSTRAINT "FK_Denetimler_Bolumler" FOREIGN KEY ("DepartmentId") REFERENCES "Bolumler"("Id") ON DELETE RESTRICT,
-    CONSTRAINT "FK_Denetimler_Alanlar" FOREIGN KEY ("AreaId") REFERENCES "Alanlar"("Id") ON DELETE SET NULL,
-    CONSTRAINT "FK_Denetimler_Sektorler" FOREIGN KEY ("SectorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL,
-    CONSTRAINT "FK_Denetimler_Direktorlukler" FOREIGN KEY ("DirectorateId") REFERENCES "Direktorlukler"("Id") ON DELETE SET NULL,
-    CONSTRAINT "FK_Denetimler_Kullanicilar" FOREIGN KEY ("AuditorId") REFERENCES "Kullanicilar"("Id") ON DELETE RESTRICT
+    CONSTRAINT "FK_Denetimler_Bolumler" FOREIGN KEY ("BolumId") REFERENCES "Bolumler"("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_Denetimler_Sektorler" FOREIGN KEY ("SektorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Denetimler_Direktorlukler" FOREIGN KEY ("DirektorlukId") REFERENCES "Direktorlukler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Denetimler_Alanlar" FOREIGN KEY ("AlanId") REFERENCES "Alanlar"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Denetimler_Kullanicilar" FOREIGN KEY ("DenetciId") REFERENCES "Kullanicilar"("Id") ON DELETE RESTRICT
 );
+
+CREATE INDEX IF NOT EXISTS "IX_Denetimler_DepartmentId" ON "Denetimler"("BolumId");
+CREATE INDEX IF NOT EXISTS "IX_Denetimler_AreaId" ON "Denetimler"("AlanId");
+CREATE INDEX IF NOT EXISTS "IX_Denetimler_AuditorId" ON "Denetimler"("DenetciId");
 
 -- Denetim Planları Tablosu
 CREATE TABLE IF NOT EXISTS "DenetimPlanlari" (
     "Id" SERIAL PRIMARY KEY,
-    "Name" VARCHAR(200) NOT NULL,
-    "Description" TEXT NULL,
-    "Category" VARCHAR(100) NULL,
+    "PlanAdi" VARCHAR(255) NOT NULL,
+    "BolumId" INTEGER NOT NULL,
+    "AlanId" INTEGER NOT NULL,
+    "DenetciId" INTEGER NOT NULL,
+    "KategoriId" INTEGER NULL,
+    "PlanlananTarih" DATE NULL,
+    "Durum" VARCHAR(50) NOT NULL,
+    "Notlar" VARCHAR(2000) NULL,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL
+    "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL,
+    CONSTRAINT "FK_DenetimPlanlari_Bolumler" FOREIGN KEY ("BolumId") REFERENCES "Bolumler"("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_DenetimPlanlari_Alanlar" FOREIGN KEY ("AlanId") REFERENCES "Alanlar"("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_DenetimPlanlari_Kullanicilar" FOREIGN KEY ("DenetciId") REFERENCES "Kullanicilar"("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_DenetimPlanlari_Kategoriler" FOREIGN KEY ("KategoriId") REFERENCES "Kategoriler"("Id") ON DELETE RESTRICT
 );
 
 -- Denetim Planı - Denetim İlişki Tablosu
@@ -158,60 +206,84 @@ CREATE TABLE IF NOT EXISTS "AuditAuditPlan" (
     CONSTRAINT "FK_AuditAuditPlan_Denetimler" FOREIGN KEY ("AuditsId") REFERENCES "Denetimler"("Id") ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS "IX_AuditAuditPlan_AuditsId" ON "AuditAuditPlan"("AuditsId");
+
 -- Denetim Cevapları Tablosu
-CREATE TABLE IF NOT EXISTS "DenetimCevaplari" (
+CREATE TABLE IF NOT EXISTS "DenetimYanitlari" (
     "Id" SERIAL PRIMARY KEY,
-    "AuditId" INTEGER NOT NULL,
-    "QuestionId" INTEGER NOT NULL,
-    "Response" VARCHAR(20) NOT NULL,
-    "PointsAwarded" INTEGER NOT NULL DEFAULT 0,
-    "Notes" TEXT NULL,
-    "ImageUrls" TEXT NULL,
+    "DenetimId" INTEGER NOT NULL,
+    "SoruId" INTEGER NOT NULL,
+    "Yanit" VARCHAR(50) NOT NULL,
+    "VerilenPuan" INTEGER NOT NULL DEFAULT 0,
+    "SoruGorselleri" VARCHAR(4000) NULL,
+    "BolumId" INTEGER NULL,
+    "SektorId" INTEGER NULL,
+    "DirektorlukId" INTEGER NULL,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL,
-    CONSTRAINT "FK_DenetimCevaplari_Denetimler" FOREIGN KEY ("AuditId") REFERENCES "Denetimler"("Id") ON DELETE CASCADE,
-    CONSTRAINT "FK_DenetimCevaplari_Sorular" FOREIGN KEY ("QuestionId") REFERENCES "Sorular"("Id") ON DELETE RESTRICT
+    CONSTRAINT "FK_DenetimYanitlari_Denetimler" FOREIGN KEY ("DenetimId") REFERENCES "Denetimler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_DenetimYanitlari_Sorular" FOREIGN KEY ("SoruId") REFERENCES "Sorular"("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_DenetimYanitlari_Bolumler" FOREIGN KEY ("BolumId") REFERENCES "Bolumler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_DenetimYanitlari_Sektorler" FOREIGN KEY ("SektorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_DenetimYanitlari_Direktorlukler" FOREIGN KEY ("DirektorlukId") REFERENCES "Direktorlukler"("Id") ON DELETE SET NULL
 );
+
+CREATE INDEX IF NOT EXISTS "IX_DenetimCevaplari_AuditId" ON "DenetimYanitlari"("DenetimId");
+CREATE INDEX IF NOT EXISTS "IX_DenetimCevaplari_QuestionId" ON "DenetimYanitlari"("SoruId");
 
 -- Aksiyonlar Tablosu
 CREATE TABLE IF NOT EXISTS "Aksiyonlar" (
     "Id" SERIAL PRIMARY KEY,
-    "AuditId" INTEGER NOT NULL,
-    "QuestionId" INTEGER NULL,
-    "Description" TEXT NOT NULL,
-    "Status" VARCHAR(50) NOT NULL DEFAULT 'açık',
-    "Priority" VARCHAR(20) NULL DEFAULT 'orta',
-    "AssignedTo" INTEGER NULL,
-    "DueDate" DATE NULL,
-    "CompletedDate" DATE NULL,
+    "DenetimId" INTEGER NOT NULL,
+    "SoruId" INTEGER NULL,
+    "BolumId" INTEGER NULL,
+    "SektorId" INTEGER NULL,
+    "DirektorlukId" INTEGER NULL,
+    "ResimYolu" VARCHAR(500) NULL,
+    "Aciklama" VARCHAR(2000) NOT NULL,
+    "OnerilenFaaliyet" VARCHAR(1000) NULL,
+    "PlanlananFaaliyet" VARCHAR(1000) NULL,
+    "HedefTarih" DATE NULL,
+    "Sorumlu" VARCHAR(200) NULL,
+    "Durum" VARCHAR(50) NOT NULL DEFAULT 'açık',
+    "Oncelik" VARCHAR(50) NULL DEFAULT 'orta',
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL,
-    CONSTRAINT "FK_Aksiyonlar_Denetimler" FOREIGN KEY ("AuditId") REFERENCES "Denetimler"("Id") ON DELETE CASCADE,
-    CONSTRAINT "FK_Aksiyonlar_Sorular" FOREIGN KEY ("QuestionId") REFERENCES "Sorular"("Id") ON DELETE SET NULL,
-    CONSTRAINT "FK_Aksiyonlar_Kullanicilar" FOREIGN KEY ("AssignedTo") REFERENCES "Kullanicilar"("Id") ON DELETE SET NULL
+    CONSTRAINT "FK_Aksiyonlar_Denetimler" FOREIGN KEY ("DenetimId") REFERENCES "Denetimler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Aksiyonlar_Sorular" FOREIGN KEY ("SoruId") REFERENCES "Sorular"("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_Aksiyonlar_Bolumler" FOREIGN KEY ("BolumId") REFERENCES "Bolumler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Aksiyonlar_Sektorler" FOREIGN KEY ("SektorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Aksiyonlar_Direktorlukler" FOREIGN KEY ("DirektorlukId") REFERENCES "Direktorlukler"("Id") ON DELETE SET NULL
 );
+
+CREATE INDEX IF NOT EXISTS "IX_Aksiyonlar_AuditId" ON "Aksiyonlar"("DenetimId");
+CREATE INDEX IF NOT EXISTS "IX_Aksiyonlar_AssignedTo" ON "Aksiyonlar"("Sorumlu");
 
 -- Seviye Eşikleri Tablosu
 CREATE TABLE IF NOT EXISTS "SeviyeEsikleri" (
     "Id" SERIAL PRIMARY KEY,
-    "LevelName" VARCHAR(50) NOT NULL,
-    "MinPercentage" DECIMAL(5,2) NOT NULL,
-    "MaxPercentage" DECIMAL(5,2) NOT NULL,
-    "SectorId" INTEGER NULL,
+    "SeviyeAdi" VARCHAR(100) NOT NULL,
+    "MinimumYuzde" DECIMAL(5,2) NOT NULL,
+    "MaksimumYuzde" DECIMAL(5,2) NOT NULL,
+    "SektorId" INTEGER NULL,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL,
-    CONSTRAINT "FK_SeviyeEsikleri_Sektorler" FOREIGN KEY ("SectorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL
+    CONSTRAINT "FK_SeviyeEsikleri_Sektorler" FOREIGN KEY ("SektorId") REFERENCES "Sektorler"("Id") ON DELETE SET NULL
 );
+
+CREATE INDEX IF NOT EXISTS "IX_SeviyeEsikleri_SectorId" ON "SeviyeEsikleri"("SektorId");
 
 -- Ayarlar Tablosu
 CREATE TABLE IF NOT EXISTS "Ayarlar" (
     "Id" SERIAL PRIMARY KEY,
-    "Key" VARCHAR(100) NOT NULL UNIQUE,
-    "Value" TEXT NULL,
-    "Description" TEXT NULL,
+    "Anahtar" VARCHAR(255) NOT NULL UNIQUE,
+    "Deger" TEXT NOT NULL,
+    "Aciklama" VARCHAR(1000) NULL,
     "OlusturmaTarihi" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "GuncellemeTarihi" TIMESTAMP WITH TIME ZONE NULL
 );
+
+CREATE INDEX IF NOT EXISTS "IX_Ayarlar_Anahtar" ON "Ayarlar"("Anahtar");
 
 -- Yetkiler Tablosu
 CREATE TABLE IF NOT EXISTS "yetkiler" (
@@ -230,27 +302,8 @@ CREATE TABLE IF NOT EXISTS "yetkiler" (
     CONSTRAINT "FK_yetkiler_Roller" FOREIGN KEY ("roleId") REFERENCES "Roller"("Id") ON DELETE RESTRICT
 );
 
--- ============================================
--- İNDEKSLER
--- ============================================
-
-CREATE INDEX IF NOT EXISTS "IX_Kullanicilar_RoleId" ON "Kullanicilar"("RoleId");
-CREATE INDEX IF NOT EXISTS "IX_Kullanicilar_SectorId" ON "Kullanicilar"("SectorId");
-CREATE INDEX IF NOT EXISTS "IX_Kullanicilar_DirectorateId" ON "Kullanicilar"("DirectorateId");
-CREATE INDEX IF NOT EXISTS "IX_Kullanicilar_DepartmentId" ON "Kullanicilar"("DepartmentId");
-CREATE INDEX IF NOT EXISTS "IX_Direktorlukler_SektorId" ON "Direktorlukler"("SektorId");
-CREATE INDEX IF NOT EXISTS "IX_Bolumler_SectorId" ON "Bolumler"("SectorId");
-CREATE INDEX IF NOT EXISTS "IX_Bolumler_DirectorateId" ON "Bolumler"("DirectorateId");
-CREATE INDEX IF NOT EXISTS "IX_Alanlar_DepartmentId" ON "Alanlar"("DepartmentId");
-CREATE INDEX IF NOT EXISTS "IX_Sorular_CategoryId" ON "Sorular"("CategoryId");
-CREATE INDEX IF NOT EXISTS "IX_Denetimler_DepartmentId" ON "Denetimler"("DepartmentId");
-CREATE INDEX IF NOT EXISTS "IX_Denetimler_AreaId" ON "Denetimler"("AreaId");
-CREATE INDEX IF NOT EXISTS "IX_Denetimler_AuditorId" ON "Denetimler"("AuditorId");
-CREATE INDEX IF NOT EXISTS "IX_DenetimCevaplari_AuditId" ON "DenetimCevaplari"("AuditId");
-CREATE INDEX IF NOT EXISTS "IX_DenetimCevaplari_QuestionId" ON "DenetimCevaplari"("QuestionId");
-CREATE INDEX IF NOT EXISTS "IX_Aksiyonlar_AuditId" ON "Aksiyonlar"("AuditId");
-CREATE INDEX IF NOT EXISTS "IX_Aksiyonlar_AssignedTo" ON "Aksiyonlar"("AssignedTo");
-CREATE INDEX IF NOT EXISTS "IX_SeviyeEsikleri_SectorId" ON "SeviyeEsikleri"("SectorId");
+CREATE INDEX IF NOT EXISTS "IX_yetkiler_RoleId_Page_Button" ON "yetkiler"("roleId", "page", "button");
+CREATE INDEX IF NOT EXISTS "IX_yetkiler_RoleId_Page" ON "yetkiler"("roleId", "page");
 CREATE INDEX IF NOT EXISTS "IX_yetkiler_roleId" ON "yetkiler"("roleId");
 
 -- ============================================
@@ -258,7 +311,7 @@ CREATE INDEX IF NOT EXISTS "IX_yetkiler_roleId" ON "yetkiler"("roleId");
 -- ============================================
 
 -- Seviye Eşikleri
-INSERT INTO "SeviyeEsikleri" ("Id", "LevelName", "MinPercentage", "MaxPercentage", "SectorId", "OlusturmaTarihi") VALUES
+INSERT INTO "SeviyeEsikleri" ("Id", "SeviyeAdi", "MinimumYuzde", "MaksimumYuzde", "SektorId", "OlusturmaTarihi") VALUES
 (1, 'Başlangıç S', 0, 19.99, NULL, CURRENT_TIMESTAMP),
 (2, '1S', 20, 39.99, NULL, CURRENT_TIMESTAMP),
 (3, '2S', 40, 59.99, NULL, CURRENT_TIMESTAMP),
@@ -268,7 +321,7 @@ INSERT INTO "SeviyeEsikleri" ("Id", "LevelName", "MinPercentage", "MaxPercentage
 ON CONFLICT DO NOTHING;
 
 -- Kategoriler
-INSERT INTO "Kategoriler" ("Id", "Name", "Description", "OrderIndex", "IsActive", "OlusturmaTarihi") VALUES
+INSERT INTO "Kategoriler" ("Id", "KategoriAdi", "Aciklama", "Sira", "Aktif", "OlusturmaTarihi") VALUES
 (1, '1S - Seiri (Ayıklama)', 'Gereksiz malzemelerin ayıklanması', 1, TRUE, CURRENT_TIMESTAMP),
 (2, '2S - Seiton (Düzenleme)', 'Her şeyin yerli yerinde olması', 2, TRUE, CURRENT_TIMESTAMP),
 (3, '3S - Seiso (Temizlik)', 'Çalışma alanının temiz tutulması', 3, TRUE, CURRENT_TIMESTAMP),
@@ -279,9 +332,10 @@ ON CONFLICT DO NOTHING;
 -- ============================================
 -- NOTLAR
 -- ============================================
--- 1. Bu dosya Entity Framework Migrations'dan oluşturulmuştur
--- 2. Veritabanı şeması güncellendiğinde bu dosya da güncellenmelidir
--- 3. Production ortamında çalıştırmadan önce yedek alınmalıdır
--- 4. ON CONFLICT DO NOTHING kullanıldığı için seed data tekrar çalıştırılabilir
+-- 1. Bu dosya Entity Framework Configuration dosyalarından oluşturulmuştur
+-- 2. Tüm kolon isimleri Türkçe'dir (Entity Configuration'lara göre)
+-- 3. Veritabanı şeması güncellendiğinde bu dosya da güncellenmelidir
+-- 4. Production ortamında çalıştırmadan önce yedek alınmalıdır
+-- 5. ON CONFLICT DO NOTHING kullanıldığı için seed data tekrar çalıştırılabilir
+-- 6. Foreign key constraint'ler Entity Configuration'lara göre ayarlanmıştır
 -- ============================================
-
