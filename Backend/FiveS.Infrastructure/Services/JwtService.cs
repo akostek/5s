@@ -43,11 +43,22 @@ namespace FiveS.Infrastructure.Services
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
+            // Get JWT settings from environment variables or configuration
+            var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
+                ?? _configuration["Jwt:Issuer"]
+                ?? "FiveSAuditPlatform";
+            var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
+                ?? _configuration["Jwt:Audience"]
+                ?? "FiveSAuditPlatformUsers";
+            var expirationHours = Environment.GetEnvironmentVariable("JWT_EXPIRATION_HOURS")
+                ?? _configuration["Jwt:ExpirationHours"]
+                ?? "24";
+            
             var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
+                issuer: jwtIssuer,
+                audience: jwtAudience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(Convert.ToDouble(_configuration["Jwt:ExpirationHours"] ?? "24")),
+                expires: DateTime.UtcNow.AddHours(Convert.ToDouble(expirationHours)),
                 signingCredentials: credentials
             );
 
