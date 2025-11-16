@@ -305,8 +305,8 @@ const DashboardPage: React.FC = () => {
             }
             // Fallback to old field names
             if (!sector) {
-              sector = dept?.sector || dept?.Sector || dept?.sectorName || dept?.SectorName;
-            }
+          sector = dept?.sector || dept?.Sector || dept?.sectorName || dept?.SectorName;
+        }
           }
         }
         

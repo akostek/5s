@@ -1806,13 +1806,13 @@ const AuditsPage: React.FC = () => {
           </DialogContent>
           <DialogActions sx={{ pt: 1 }}>
             {canAccessButton('Denetimler', 'edit') && (
-              <Button 
-                onClick={() => selectedAudit && handleEdit(selectedAudit)} 
-                size="small"
-                sx={{ fontSize: '0.7rem' }}
-              >
-                Düzenle
-              </Button>
+            <Button 
+              onClick={() => selectedAudit && handleEdit(selectedAudit)} 
+              size="small"
+              sx={{ fontSize: '0.7rem' }}
+            >
+              Düzenle
+            </Button>
             )}
             {canAccessButton('Denetimler', 'delete') && (
               <Button 

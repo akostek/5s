@@ -516,7 +516,7 @@ const SettingsPage: React.FC = () => {
       alert('Kategori seçilmelidir.');
       return;
     }
-
+    
     // Ensure categoryId is a valid number
     if (!editingQuestion.categoryId || editingQuestion.categoryId <= 0) {
       alert('Geçerli bir kategori seçilmelidir.');
@@ -530,19 +530,19 @@ const SettingsPage: React.FC = () => {
       return;
     }
 
-    const questionData: any = {
+      const questionData: any = {
       categoryId: categoryIdNum, // Ensure it's a number
-      text: editingQuestion.text.trim(),
-      sector: editingQuestion.sector || null,
-      directorate: editingQuestion.directorate || null,
-      department: editingQuestion.department || null,
-      area: editingQuestion.area || null,
-      orderIndex: editingQuestion.order || 0,
-      pointsHigh: editingQuestion.points_high || 10,
-      pointsMedium: editingQuestion.points_medium || 5,
-      pointsLow: editingQuestion.points_low || 0,
-      isActive: editingQuestion.is_active !== undefined ? editingQuestion.is_active : true,
-    };
+        text: editingQuestion.text.trim(),
+        sector: editingQuestion.sector || null,
+        directorate: editingQuestion.directorate || null,
+        department: editingQuestion.department || null,
+        area: editingQuestion.area || null,
+        orderIndex: editingQuestion.order || 0,
+        pointsHigh: editingQuestion.points_high || 10,
+        pointsMedium: editingQuestion.points_medium || 5,
+        pointsLow: editingQuestion.points_low || 0,
+        isActive: editingQuestion.is_active !== undefined ? editingQuestion.is_active : true,
+      };
 
     // Debug: Log the data being sent
     console.log('Sending question data:', questionData);
@@ -801,35 +801,35 @@ const SettingsPage: React.FC = () => {
                   <Typography variant="body2" color="text.secondary">Sektör, direktörlük, bölüm ve alan bazında sorular</Typography>
                 </Box>
                 {canAccessButton('Ayarlar', 'new') && (
-                  <Button 
-                    variant="contained" 
-                    startIcon={<Add />} 
-                    onClick={() => {
+                <Button 
+                  variant="contained" 
+                  startIcon={<Add />} 
+                  onClick={() => {
                       const sortedCategories = [...categories].sort((a, b) => 
                         (a.orderIndex || a.order_index || a.OrderIndex || 0) - (b.orderIndex || b.order_index || b.OrderIndex || 0)
-                      );
+                    );
                       const firstCategory = sortedCategories.length > 0 ? sortedCategories[0] : null;
-                      setEditingQuestion({
-                        id: 0,
+                    setEditingQuestion({
+                      id: 0,
                         category: firstCategory?.name || firstCategory?.Name || '',
                         categoryId: firstCategory?.id || firstCategory?.Id || undefined,
-                        text: '',
-                        sector: '',
-                        directorate: '',
-                        department: '',
-                        area: '',
-                        order: 0,
-                        points_high: 10,
-                        points_medium: 5,
-                        points_low: 0,
-                        is_active: true,
-                      });
-                      setQuestionDialogOpen(true);
-                    }} 
-                    size="small"
-                  >
-                    Yeni Soru Ekle
-                  </Button>
+                      text: '',
+                      sector: '',
+                      directorate: '',
+                      department: '',
+                      area: '',
+                      order: 0,
+                      points_high: 10,
+                      points_medium: 5,
+                      points_low: 0,
+                      is_active: true,
+                    });
+                    setQuestionDialogOpen(true);
+                  }} 
+                  size="small"
+                >
+                  Yeni Soru Ekle
+                </Button>
                 )}
               </Box>
               {loadingQuestions ? (
@@ -877,10 +877,10 @@ const SettingsPage: React.FC = () => {
                             <TableCell>
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
                                 {canAccessButton('Ayarlar', 'edit') && (
-                                  <IconButton size="small" onClick={() => { setEditingQuestion(question); setQuestionDialogOpen(true); }} sx={{ color: 'primary.main' }}><Edit fontSize="small" /></IconButton>
+                                <IconButton size="small" onClick={() => { setEditingQuestion(question); setQuestionDialogOpen(true); }} sx={{ color: 'primary.main' }}><Edit fontSize="small" /></IconButton>
                                 )}
                                 {canAccessButton('Ayarlar', 'delete') && (
-                                  <IconButton size="small" onClick={() => handleDeleteQuestion(question.id)} sx={{ color: 'error.main' }}><Delete fontSize="small" /></IconButton>
+                                <IconButton size="small" onClick={() => handleDeleteQuestion(question.id)} sx={{ color: 'error.main' }}><Delete fontSize="small" /></IconButton>
                                 )}
                               </Box>
                             </TableCell>
