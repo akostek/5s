@@ -153,14 +153,41 @@ dotnet ef database update PreviousMigrationName
 
 ## Konfigürasyon
 
-### appsettings.json
+### Environment Variables (.env)
+
+**ÖNEMLİ:** Bu proje kurumsal güvenlik standartlarına uygun olarak environment variables kullanmaktadır.
+
+1. `Backend/FiveS.Api/.env.example` dosyasını `.env` olarak kopyalayın:
+   ```bash
+   cd Backend/FiveS.Api
+   copy .env.example .env
+   ```
+
+2. `.env` dosyasını açın ve gerçek değerlerle doldurun:
+   ```env
+   DATABASE_CONNECTION_STRING=Host=localhost;Port=5432;Database=fives_audit;Username=postgres;Password=your_password
+   JWT_SECRET=YourSuperSecretKeyForJWTTokenGeneration123!ChangeThisInProduction
+   JWT_ISSUER=FiveSAuditPlatform
+   JWT_AUDIENCE=FiveSAuditPlatformUsers
+   JWT_EXPIRATION_HOURS=24
+   ```
+
+**Güvenlik Notları:**
+- `.env` dosyası Git'e commit edilmez (`.gitignore`'da tanımlı)
+- Production ortamında environment variables kullanın
+- JWT_SECRET için güçlü bir key kullanın (en az 32 karakter)
+- Detaylı bilgi için `README_ENV.md` dosyasına bakın
+
+### appsettings.json (Fallback)
+
+`appsettings.json` dosyası artık hassas bilgileri içermez. Environment variables yoksa fallback olarak kullanılır:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=fives_audit;Username=postgres;Password=yourpassword"
+    "DefaultConnection": ""
   },
   "Jwt": {
-    "Secret": "YourSuperSecretKeyForJWTTokenGeneration123!",
+    "Secret": "",
     "Issuer": "FiveSAuditPlatform",
     "Audience": "FiveSAuditPlatformUsers",
     "ExpirationHours": "24"

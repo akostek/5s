@@ -13,6 +13,24 @@ using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.FileProviders;
 using System.Linq;
 using System.Text;
+using DotNetEnv;
+
+// Load environment variables from .env file
+// This should be done before WebApplication.CreateBuilder to ensure env vars are available
+var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+if (File.Exists(envPath))
+{
+    Env.Load(envPath);
+}
+else
+{
+    // Try parent directory (Backend folder)
+    var parentEnvPath = Path.Combine(Directory.GetCurrentDirectory(), "..", ".env");
+    if (File.Exists(parentEnvPath))
+    {
+        Env.Load(parentEnvPath);
+    }
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,10 +50,14 @@ builder.Services.AddControllers()
         options.SuppressModelStateInvalidFilter = false; // Keep automatic validation but allow custom handling
     });
 
-// Database Configuration
+// Database Configuration - Load from environment variable or configuration
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    // Priority: Environment variable > appsettings.json
+    var connectionString = Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING")
+        ?? builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Database connection string not configured. Please set DATABASE_CONNECTION_STRING environment variable or in appsettings.json");
+    
     options.UseNpgsql(connectionString);
 });
 
@@ -58,10 +80,16 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<ImageUploadService>();
 
-// JWT Authentication
-var jwtSecret = builder.Configuration["Jwt:Secret"];
-var jwtIssuer = builder.Configuration["Jwt:Issuer"];
-var jwtAudience = builder.Configuration["Jwt:Audience"];
+// JWT Authentication - Load from environment variables or configuration
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") 
+    ?? builder.Configuration["Jwt:Secret"] 
+    ?? throw new InvalidOperationException("JWT Secret not configured. Please set JWT_SECRET environment variable or in appsettings.json");
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") 
+    ?? builder.Configuration["Jwt:Issuer"] 
+    ?? "FiveSAuditPlatform";
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") 
+    ?? builder.Configuration["Jwt:Audience"] 
+    ?? "FiveSAuditPlatformUsers";
 
 builder.Services.AddAuthentication(options =>
 {
