@@ -21,8 +21,13 @@ namespace FiveS.Infrastructure.Services
 
         public string GenerateToken(User user)
         {
+            // Priority: Environment variable > Configuration
+            var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+                ?? _configuration["Jwt:Secret"]
+                ?? throw new InvalidOperationException("JWT Secret not configured. Please set JWT_SECRET environment variable or Jwt:Secret in appsettings.json");
+            
             var securityKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret not configured")));
+                Encoding.UTF8.GetBytes(jwtSecret));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
@@ -51,20 +56,33 @@ namespace FiveS.Infrastructure.Services
 
         public ClaimsPrincipal? ValidateToken(string token)
         {
+            // Priority: Environment variable > Configuration
+            var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+                ?? _configuration["Jwt:Secret"]
+                ?? throw new InvalidOperationException("JWT Secret not configured. Please set JWT_SECRET environment variable or Jwt:Secret in appsettings.json");
+            
             var tokenHandler = new JwtSecurityTokenHandler();
             var securityKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret not configured")));
+                Encoding.UTF8.GetBytes(jwtSecret));
 
             try
             {
+                // Get JWT settings from environment variables or configuration
+                var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
+                    ?? _configuration["Jwt:Issuer"]
+                    ?? "FiveSAuditPlatform";
+                var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
+                    ?? _configuration["Jwt:Audience"]
+                    ?? "FiveSAuditPlatformUsers";
+                
                 var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    ValidIssuer = _configuration["Jwt:Issuer"],
-                    ValidAudience = _configuration["Jwt:Audience"],
+                    ValidIssuer = jwtIssuer,
+                    ValidAudience = jwtAudience,
                     IssuerSigningKey = securityKey
                 }, out SecurityToken validatedToken);
 

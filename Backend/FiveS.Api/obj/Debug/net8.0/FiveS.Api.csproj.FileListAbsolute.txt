@@ -447,3 +447,5 @@ C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Api\obj\Debug\net8.
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Api\obj\Debug\net8.0\ref\FiveS.Api.dll
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Api\bin\Debug\net8.0\FiveS.Api.staticwebassets.runtime.json
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\Backend\FiveS.Api\obj\Debug\net8.0\FiveS.Api.sourcelink.json
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\Backend\FiveS.Api\bin\Debug\net8.0\DotNetEnv.dll
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\Backend\FiveS.Api\bin\Debug\net8.0\Sprache.dll
