@@ -3,16 +3,19 @@ using FiveS.Application.Interfaces;
 using FiveS.Domain.Entities;
 using FiveS.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FiveS.Application.Services
 {
     public class PermissionService : IPermissionService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<PermissionService>? _logger;
 
-        public PermissionService(IUnitOfWork unitOfWork)
+        public PermissionService(IUnitOfWork unitOfWork, ILogger<PermissionService>? logger = null)
         {
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
         public async Task<bool> CanAccessPageAsync(int roleId, string page)
@@ -20,6 +23,9 @@ namespace FiveS.Application.Services
             var permission = await _unitOfWork.Repository<Permission>()
                 .GetQueryable()
                 .FirstOrDefaultAsync(p => p.RoleId == roleId && p.Page == page && p.Button == null);
+
+            _logger?.LogDebug("CanAccessPageAsync: RoleId={RoleId}, Page={Page}, Found={Found}, CanView={CanView}", 
+                roleId, page, permission != null, permission?.CanView ?? false);
 
             return permission?.CanView ?? false;
         }
@@ -29,6 +35,23 @@ namespace FiveS.Application.Services
             var permission = await _unitOfWork.Repository<Permission>()
                 .GetQueryable()
                 .FirstOrDefaultAsync(p => p.RoleId == roleId && p.Page == page && p.Button == button);
+
+            _logger?.LogDebug("CanAccessButtonAsync: RoleId={RoleId}, Page={Page}, Button={Button}, Found={Found}, CanView={CanView}", 
+                roleId, page, button, permission != null, permission?.CanView ?? false);
+
+            if (permission == null)
+            {
+                _logger?.LogWarning("Permission not found: RoleId={RoleId}, Page={Page}, Button={Button}", roleId, page, button);
+                
+                // List all permissions for this roleId and page for debugging
+                var allPermissions = await _unitOfWork.Repository<Permission>()
+                    .GetQueryable()
+                    .Where(p => p.RoleId == roleId && p.Page == page)
+                    .ToListAsync();
+                
+                _logger?.LogInformation("Available permissions for RoleId={RoleId}, Page={Page}: {Permissions}", 
+                    roleId, page, string.Join(", ", allPermissions.Select(p => $"Button={p.Button}, CanView={p.CanView}")));
+            }
 
             return permission?.CanView ?? false;
         }

@@ -136,8 +136,29 @@ namespace FiveS.Api.Controllers
             {
                 // Debug: Log received data
                 var logger = HttpContext.RequestServices.GetRequiredService<ILogger<QuestionsController>>();
-                logger.LogInformation("Create question request received. CategoryId: {CategoryId}, Text length: {TextLength}", 
-                    createDto?.CategoryId ?? 0, createDto?.Text?.Length ?? 0);
+                
+                logger.LogInformation("Create question request received. CategoryId: {CategoryId}, Text: {Text}, Text length: {TextLength}, Full DTO: {DTO}", 
+                    createDto?.CategoryId ?? 0, 
+                    createDto?.Text ?? "null", 
+                    createDto?.Text?.Length ?? 0,
+                    createDto != null ? System.Text.Json.JsonSerializer.Serialize(createDto) : "null");
+
+                // Check ModelState first (ApiController does automatic validation)
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState
+                        .Where(x => x.Value?.Errors.Count > 0)
+                        .Select(x => new { field = x.Key, errors = x.Value?.Errors.Select(e => e.ErrorMessage) })
+                        .ToList();
+                    logger.LogWarning("Create question ModelState validation failed: {Errors}", System.Text.Json.JsonSerializer.Serialize(errors));
+                    return BadRequest(new { message = "Validation failed", errors });
+                }
+
+                if (createDto == null)
+                {
+                    logger.LogWarning("Create question request: createDto is null");
+                    return BadRequest(new { message = "Request body is required" });
+                }
 
                 // Check permission using yetkiler table
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
@@ -157,12 +178,6 @@ namespace FiveS.Api.Controllers
                     }
                 }
 
-                if (createDto == null)
-                {
-                    logger.LogWarning("Create question request: createDto is null");
-                    return BadRequest(new { message = "Request body is required" });
-                }
-
                 // Manual validation check with detailed logging
                 if (createDto.CategoryId <= 0)
                 {
@@ -180,17 +195,6 @@ namespace FiveS.Api.Controllers
                 {
                     logger.LogWarning("Create question validation failed: Text length is {Length}, minimum is 5", createDto.Text.Length);
                     return BadRequest(new { message = "Soru metni en az 5 karakter olmalıdır.", errors = new[] { new { field = "Text", errors = new[] { "Question text must be at least 5 characters" } } } });
-                }
-
-                // Log ModelState errors if any
-                if (!ModelState.IsValid)
-                {
-                    var errors = ModelState
-                        .Where(x => x.Value?.Errors.Count > 0)
-                        .Select(x => new { field = x.Key, errors = x.Value?.Errors.Select(e => e.ErrorMessage) })
-                        .ToList();
-                    logger.LogWarning("Create question ModelState validation failed: {Errors}", System.Text.Json.JsonSerializer.Serialize(errors));
-                    return BadRequest(new { message = "Validation failed", errors });
                 }
 
                 var question = await _questionService.CreateQuestionAsync(createDto);
@@ -267,6 +271,9 @@ namespace FiveS.Api.Controllers
         {
             try
             {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<QuestionsController>>();
+                logger.LogInformation("Delete question request received. Question ID: {QuestionId}", id);
+                
                 // Check permission using yetkiler table
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
                     ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value 
@@ -277,12 +284,27 @@ namespace FiveS.Api.Controllers
                     var currentUser = await _authService.GetCurrentUserAsync(userId);
                     if (currentUser != null)
                     {
+                        logger.LogInformation("User attempting delete: UserId={UserId}, RoleId={RoleId}", userId, currentUser.RoleId);
                         var canAccess = await _permissionService.CanAccessButtonAsync(currentUser.RoleId, "Ayarlar", "delete");
+                        logger.LogInformation("Permission check result: CanAccess={CanAccess} for RoleId={RoleId}, Page=Ayarlar, Button=delete", 
+                            canAccess, currentUser.RoleId);
+                        
                         if (!canAccess)
                         {
+                            logger.LogWarning("Delete permission denied for UserId={UserId}, RoleId={RoleId}", userId, currentUser.RoleId);
                             return Forbid();
                         }
                     }
+                    else
+                    {
+                        logger.LogWarning("User not found for UserId={UserId}", userId);
+                        return Unauthorized(new { message = "Kullanıcı bulunamadı" });
+                    }
+                }
+                else
+                {
+                    logger.LogWarning("Invalid UserId in token: {UserIdClaim}", userIdClaim);
+                    return Unauthorized(new { message = "Geçersiz kullanıcı kimliği" });
                 }
 
                 var result = await _questionService.DeleteQuestionAsync(id);

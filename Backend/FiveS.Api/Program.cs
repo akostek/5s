@@ -20,10 +20,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Use camelCase for JSON serialization to match frontend
+        // Use camelCase for JSON serialization/deserialization to match frontend
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true; // Allow case-insensitive property matching
         // Convert enum values to strings
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    })
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // Suppress automatic ModelState validation to handle it manually
+        options.SuppressModelStateInvalidFilter = false; // Keep automatic validation but allow custom handling
     });
 
 // Database Configuration
