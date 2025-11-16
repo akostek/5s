@@ -49,3 +49,4 @@ C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.pdb
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.genruntimeconfig.cache
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Infrastructure\obj\Debug\net8.0\ref\FiveS.Infrastructure.dll
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\Backend\FiveS.Infrastructure\obj\Debug\net8.0\FiveS.Infrastructure.sourcelink.json

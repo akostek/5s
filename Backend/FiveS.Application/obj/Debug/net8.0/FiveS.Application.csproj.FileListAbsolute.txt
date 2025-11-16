@@ -49,3 +49,4 @@ C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Application\obj\Deb
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Application\obj\Debug\net8.0\refint\FiveS.Application.dll
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Application\obj\Debug\net8.0\FiveS.Application.pdb
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Application\obj\Debug\net8.0\ref\FiveS.Application.dll
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\Backend\FiveS.Application\obj\Debug\net8.0\FiveS.Application.sourcelink.json

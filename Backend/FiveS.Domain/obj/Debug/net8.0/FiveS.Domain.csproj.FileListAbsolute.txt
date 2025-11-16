@@ -31,3 +31,4 @@ C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Domain\obj\Debug\ne
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Domain\obj\Debug\net8.0\refint\FiveS.Domain.dll
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Domain\obj\Debug\net8.0\FiveS.Domain.pdb
 C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\backend\FiveS.Domain\obj\Debug\net8.0\ref\FiveS.Domain.dll
+C:\Users\akostek\Desktop\5S_Güncel - Copy (2)\Backend\FiveS.Domain\obj\Debug\net8.0\FiveS.Domain.sourcelink.json
