@@ -61,6 +61,9 @@ import { useAuth, useRole } from '../contexts/AuthContext';
 import { usePermission } from '../contexts/PermissionContext';
 import { apiService } from '../services/api';
 import { Audit, Action } from '../types';
+import ActionHistoryDialog from './ActionHistoryDialog';
+import NoteDialog from './NoteDialog';
+import { History } from '@mui/icons-material';
 
 type RowStatus = 'draft' | 'published' | 'planlandı' | 'devam' | 'tamamlandı' | 'denetlendi';
 
@@ -83,7 +86,7 @@ interface AuditTableRow {
   audit: Audit;
 }
 
-type NormalizedActionStatus = 'open' | 'in_progress' | 'closed';
+type NormalizedActionStatus = 'open' | 'in_progress' | 'closed' | 'pending_approval';
 
 const normalizeActionStatus = (status: any): NormalizedActionStatus => {
   if (typeof status === 'number') {
@@ -92,6 +95,8 @@ const normalizeActionStatus = (status: any): NormalizedActionStatus => {
         return 'in_progress';
       case 2:
         return 'closed';
+      case 3:
+        return 'pending_approval';
       default:
         return 'open';
     }
@@ -107,8 +112,44 @@ const normalizeActionStatus = (status: any): NormalizedActionStatus => {
     return 'closed';
   }
 
+  if (value === 'pending_approval' || value === 'pendingapproval') {
+    return 'pending_approval';
+  }
+
   return 'open';
 };
+
+const getActionStatusLabel = (status: NormalizedActionStatus) => {
+  switch (status) {
+    case 'open':
+      return 'Alan Sorumlusunda';
+    case 'in_progress':
+      return 'Devam Ediyor';
+    case 'closed':
+      return 'Kapandı';
+    case 'pending_approval':
+      return 'Denetçi Kontrolünde';
+    default:
+      return 'Bilinmiyor';
+  }
+};
+
+const getActionStatusChipColor = (status: NormalizedActionStatus): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+  switch (status) {
+    case 'open':
+      return 'error'; // Kırmızı - Alan Sorumlusunda (Acil)
+    case 'in_progress':
+      return 'warning';
+    case 'closed':
+      return 'success';
+    case 'pending_approval':
+      return 'info'; // Mavi - Denetçi Kontrolünde
+    default:
+      return 'default';
+  }
+};
+
+
 
 const normalizeDateString = (value: any): string | undefined => {
   if (!value) {
@@ -137,8 +178,8 @@ const mapActionDtoToAction = (action: any): Action => {
 
   // Priority mapping - backend'de priority alanı yoksa varsayılan olarak 'Orta'
   const priority = action?.priority ?? action?.Priority;
-  const normalizedPriority = priority && (priority === 'Düşük' || priority === 'Orta' || priority === 'Yüksek') 
-    ? priority 
+  const normalizedPriority = priority && (priority === 'Düşük' || priority === 'Orta' || priority === 'Yüksek')
+    ? priority
     : 'Orta' as 'Düşük' | 'Orta' | 'Yüksek';
 
   return {
@@ -234,10 +275,53 @@ const AuditsPage: React.FC = () => {
   });
   const [planFormError, setPlanFormError] = useState('');
   const [planSubmitting, setPlanSubmitting] = useState(false);
+
   const [departments, setDepartments] = useState<any[]>([]);
   const [auditors, setAuditors] = useState<any[]>([]);
   const [questions, setQuestions] = useState<any[]>([]);
 
+  // Action Workflow States
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [selectedActionId, setSelectedActionId] = useState<number>(0);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [noteDialogTitle, setNoteDialogTitle] = useState('');
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ id: number; status: string } | null>(null);
+
+  const handleViewHistory = (actionId: number) => {
+    setSelectedActionId(actionId);
+    setHistoryDialogOpen(true);
+  };
+
+  const handleRequestStatusChange = (action: Action, newStatus: string, title: string) => {
+    setPendingStatusChange({ id: action.id, status: newStatus });
+    setNoteDialogTitle(title);
+    setNoteDialogOpen(true);
+  };
+
+  const handleConfirmStatusChange = async (note: string) => {
+    if (!pendingStatusChange) return;
+
+    try {
+      await apiService.changeActionStatus(pendingStatusChange.id, pendingStatusChange.status, note);
+
+      // Update local state
+      setSelectedAuditActions(prev => prev.map(a =>
+        a.id === pendingStatusChange.id
+          ? { ...a, status: pendingStatusChange.status as NormalizedActionStatus }
+          : a
+      ));
+
+      setNoteDialogOpen(false);
+      setPendingStatusChange(null);
+      // Reload actions to be safe
+      if (selectedAudit) {
+        loadAuditActions(selectedAudit.id);
+      }
+    } catch (error: any) {
+      console.error('Error changing status:', error);
+      alert(error?.response?.data?.message || 'Durum değiştirilirken hata oluştu');
+    }
+  };
 
   const loadAuditActions = useCallback(
     async (auditId: number) => {
@@ -277,38 +361,38 @@ const AuditsPage: React.FC = () => {
         total_score: a.totalScore || 0,
         max_possible_score: a.maxPossibleScore || 0,
         level_achieved: a.levelAchieved,
-          area_id: a.areaId,
-          area_name: a.areaName,
-          area_supervisor: a.areaSupervisor,
-          total_actions: a.totalActions || 0,
-          open_actions: a.openActions || 0,
-          closed_actions: a.closedActions || 0,
-          created_at: a.createdAt ? new Date(a.createdAt).toISOString() : new Date().toISOString(),
+        area_id: a.areaId,
+        area_name: a.areaName,
+        area_supervisor: a.areaSupervisor,
+        total_actions: a.totalActions || 0,
+        open_actions: a.openActions || 0,
+        closed_actions: a.closedActions || 0,
+        created_at: a.createdAt ? new Date(a.createdAt).toISOString() : new Date().toISOString(),
         updated_at: a.updatedAt ? new Date(a.updatedAt).toISOString() : undefined,
       }));
       setAudits(mappedAudits);
-      
+
       // Load overdue actions count, high priority actions, and progress for each audit
       const overdueMap = new Map<number, number>();
       const progressMap = new Map<number, { answered: number; total: number }>();
-      
+
       // Get total questions count
       const questions = await apiService.getQuestions();
       const totalQuestions = questions.length;
-      
+
       const actionsMap = new Map<number, Action[]>();
-      
+
       await Promise.all(mappedAudits.map(async (audit) => {
         try {
           const [actions, responses] = await Promise.all([
             apiService.getActionsByAuditId(audit.id),
             apiService.getAuditDetailResponses(audit.id).catch(() => [])
           ]);
-          
+
           // Store actions for this audit
           const mappedActions = actions.map((a: any) => mapActionDtoToAction(a));
           actionsMap.set(audit.id, mappedActions);
-          
+
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const overdueCount = actions.filter((action: any) => {
@@ -318,7 +402,7 @@ const AuditsPage: React.FC = () => {
             return targetDate < today;
           }).length;
           overdueMap.set(audit.id, overdueCount);
-          
+
           // Calculate progress
           const answeredCount = responses.length;
           progressMap.set(audit.id, { answered: answeredCount, total: totalQuestions });
@@ -344,7 +428,7 @@ const AuditsPage: React.FC = () => {
   useEffect(() => {
     // Load audits from API
     loadAudits();
-    
+
     // Load departments, areas, auditors and area supervisors for filters
     const loadFilterData = async () => {
       try {
@@ -354,7 +438,7 @@ const AuditsPage: React.FC = () => {
           apiService.getAreas(),
           apiService.getUsers(), // getUsers() now handles 403/401 silently internally
         ]);
-        
+
         // Set departments
         if (deptResult.status === 'fulfilled') {
           setDepartments(deptResult.value || []);
@@ -362,7 +446,7 @@ const AuditsPage: React.FC = () => {
           console.error('Error loading departments:', deptResult.reason);
           setDepartments([]);
         }
-        
+
         // Set areas
         if (areaResult.status === 'fulfilled') {
           setAreas(areaResult.value || []);
@@ -370,7 +454,7 @@ const AuditsPage: React.FC = () => {
           console.error('Error loading areas:', areaResult.reason);
           setAreas([]);
         }
-        
+
         // Set auditors and area supervisors - no role filtering, show all users
         if (userResult.status === 'fulfilled') {
           const userData = userResult.value || [];
@@ -431,7 +515,7 @@ const AuditsPage: React.FC = () => {
           apiService.getUsers(), // getUsers() now handles 403/401 silently internally
           apiService.getQuestions(),
         ]);
-        
+
         // Set departments
         if (deptResult.status === 'fulfilled') {
           setDepartments(deptResult.value || []);
@@ -439,7 +523,7 @@ const AuditsPage: React.FC = () => {
           console.error('Error loading departments:', deptResult.reason);
           setDepartments([]);
         }
-        
+
         // Set sectors
         if (sectorResult.status === 'fulfilled') {
           setSectors(sectorResult.value || []);
@@ -447,7 +531,7 @@ const AuditsPage: React.FC = () => {
           console.error('Error loading sectors:', sectorResult.reason);
           setSectors([]);
         }
-        
+
         // Set directorates
         if (directorateResult.status === 'fulfilled') {
           setDirectorates(directorateResult.value || []);
@@ -455,7 +539,7 @@ const AuditsPage: React.FC = () => {
           console.error('Error loading directorates:', directorateResult.reason);
           setDirectorates([]);
         }
-        
+
         // Set areas
         if (areaResult.status === 'fulfilled') {
           setAreas(areaResult.value || []);
@@ -463,7 +547,7 @@ const AuditsPage: React.FC = () => {
           console.error('Error loading areas:', areaResult.reason);
           setAreas([]);
         }
-        
+
         // Set questions
         if (questionsResult.status === 'fulfilled') {
           setQuestions(questionsResult.value || []);
@@ -471,7 +555,7 @@ const AuditsPage: React.FC = () => {
           console.error('Error loading questions:', questionsResult.reason);
           setQuestions([]);
         }
-        
+
         // Set auditors and area supervisors - backend already filters by role
         if (userResult.status === 'fulfilled') {
           const userData = userResult.value || [];
@@ -506,37 +590,37 @@ const AuditsPage: React.FC = () => {
 
   const filteredAudits = useMemo(() => {
     let filtered = [...audits];
-    
+
     // Search term filter
     if (searchTerm) {
-      filtered = filtered.filter(audit => 
+      filtered = filtered.filter(audit =>
         audit.department_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         audit.area_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         audit.auditor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         audit.area_supervisor?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     // Department filter
     if (departmentFilter !== 'all') {
       filtered = filtered.filter(audit => audit.department_id === Number(departmentFilter));
     }
-    
+
     // Area filter
     if (areaFilter !== 'all') {
       filtered = filtered.filter(audit => audit.area_id === Number(areaFilter));
     }
-    
+
     // Auditor filter
     if (auditorFilter !== 'all') {
       filtered = filtered.filter(audit => audit.auditor_id === Number(auditorFilter));
     }
-    
+
     // Area Supervisor filter
     if (areaSupervisorFilter !== 'all') {
       filtered = filtered.filter(audit => audit.area_supervisor === areaSupervisorFilter);
     }
-    
+
     // Date range filter
     if (startDate) {
       filtered = filtered.filter(audit => {
@@ -556,7 +640,7 @@ const AuditsPage: React.FC = () => {
         return auditDate <= end;
       });
     }
-    
+
     // Status filter
     if (statusFilter !== 'all') {
       if (statusFilter === 'devam') {
@@ -571,12 +655,12 @@ const AuditsPage: React.FC = () => {
         filtered = filtered.filter(audit => audit.status === statusFilter);
       }
     }
-    
+
     // Level filter
     if (levelFilter !== 'all') {
       filtered = filtered.filter(audit => audit.level_achieved === levelFilter);
     }
-    
+
     // Level range filter
     if (levelMinFilter || levelMaxFilter) {
       const levelOrder: { [key: string]: number } = { '1S': 1, '2S': 2, '3S': 3, '4S': 4, '5S': 5 };
@@ -588,14 +672,14 @@ const AuditsPage: React.FC = () => {
         return auditLevel >= minLevel && auditLevel <= maxLevel;
       });
     }
-    
+
     // Action filter
     if (actionFilter === 'with_open') {
       filtered = filtered.filter(audit => (audit.open_actions || 0) > 0);
     } else if (actionFilter === 'without_open') {
       filtered = filtered.filter(audit => (audit.open_actions || 0) === 0);
     }
-    
+
     // Critical actions filter
     if (criticalActionsFilter && filteredActionIds.length > 0) {
       filtered = filtered.filter(audit => {
@@ -608,7 +692,7 @@ const AuditsPage: React.FC = () => {
         });
       });
     }
-    
+
     // Delayed actions filter
     if (delayedActionsFilter && filteredActionIds.length > 0) {
       const today = new Date();
@@ -631,7 +715,7 @@ const AuditsPage: React.FC = () => {
         });
       });
     }
-    
+
     return filtered;
   }, [audits, searchTerm, statusFilter, departmentFilter, areaFilter, auditorFilter, areaSupervisorFilter, levelFilter, levelMinFilter, levelMaxFilter, actionFilter, startDate, endDate, criticalActionsFilter, delayedActionsFilter, filteredActionIds, auditActionsMap]);
 
@@ -649,14 +733,14 @@ const AuditsPage: React.FC = () => {
 
   // Calculate high priority actions for filtered audits
   const [filteredHighPriorityActionsCount, setFilteredHighPriorityActionsCount] = useState(0);
-  
+
   useEffect(() => {
     const calculateHighPriorityActions = async () => {
       if (filteredAudits.length === 0) {
         setFilteredHighPriorityActionsCount(0);
         return;
       }
-      
+
       let totalHighPriorityActions = 0;
       await Promise.all(filteredAudits.map(async (audit) => {
         try {
@@ -671,7 +755,7 @@ const AuditsPage: React.FC = () => {
         }
       }));
       setFilteredHighPriorityActionsCount(totalHighPriorityActions);
-      
+
       // Update progress map for filtered audits
       const filteredProgressMap = new Map<number, { answered: number; total: number }>();
       filteredAudits.forEach(audit => {
@@ -682,7 +766,7 @@ const AuditsPage: React.FC = () => {
       });
       setAuditProgressMap(filteredProgressMap);
     };
-    
+
     calculateHighPriorityActions();
   }, [filteredAudits, allAuditProgressMap]);
 
@@ -718,7 +802,7 @@ const AuditsPage: React.FC = () => {
 
     try {
       // Convert date to ISO format for backend
-      const auditDateISO = planForm.auditDate 
+      const auditDateISO = planForm.auditDate
         ? new Date(planForm.auditDate + 'T00:00:00').toISOString()
         : new Date().toISOString();
 
@@ -762,27 +846,27 @@ const AuditsPage: React.FC = () => {
       };
 
       setAudits(prev => [newAudit, ...prev]);
-        setPlanDialogOpen(false);
-          setPlanForm({
-            departmentId: 0,
-            sectorId: 0,
-            directorateId: 0,
-            auditorId: 0,
-            areaId: 0,
-            areaSupervisor: '',
-            auditDate: new Date().toISOString().split('T')[0],
-            notes: '',
-          });
+      setPlanDialogOpen(false);
+      setPlanForm({
+        departmentId: 0,
+        sectorId: 0,
+        directorateId: 0,
+        auditorId: 0,
+        areaId: 0,
+        areaSupervisor: '',
+        auditDate: new Date().toISOString().split('T')[0],
+        notes: '',
+      });
     } catch (error: any) {
       console.error('Error creating audit plan:', error);
       console.error('Error response:', error?.response?.data);
-      
+
       // Show detailed error message from backend
-      const errorMessage = error?.response?.data?.message 
-        || error?.response?.data?.error 
-        || error?.message 
+      const errorMessage = error?.response?.data?.message
+        || error?.response?.data?.error
+        || error?.message
         || 'Denetim planı oluşturulurken bir hata oluştu.';
-      
+
       setPlanFormError(errorMessage);
     } finally {
       setPlanSubmitting(false);
@@ -850,16 +934,16 @@ const AuditsPage: React.FC = () => {
       await apiService.updateAction(actionId, {
         status: 'closed',
       });
-      
+
       // Update local state
-      setSelectedAuditActions(prev => 
-        prev.map(action => 
-          action.id === actionId 
+      setSelectedAuditActions(prev =>
+        prev.map(action =>
+          action.id === actionId
             ? { ...action, status: 'closed' }
             : action
         )
       );
-      
+
       // Reload audits to update action counts
       await loadAudits();
     } catch (error: any) {
@@ -901,10 +985,10 @@ const AuditsPage: React.FC = () => {
         await loadAudits();
       } else {
         // Update existing action
-        const targetDateISO = updatedAction.target_date 
-          ? (updatedAction.target_date.length === 10 
-              ? new Date(updatedAction.target_date + 'T00:00:00').toISOString() 
-              : new Date(updatedAction.target_date).toISOString())
+        const targetDateISO = updatedAction.target_date
+          ? (updatedAction.target_date.length === 10
+            ? new Date(updatedAction.target_date + 'T00:00:00').toISOString()
+            : new Date(updatedAction.target_date).toISOString())
           : undefined;
 
         await apiService.updateAction(updatedAction.id, {
@@ -916,7 +1000,7 @@ const AuditsPage: React.FC = () => {
           status: updatedAction.status as 'open' | 'in_progress' | 'closed',
           priority: updatedAction.priority,
         });
-        
+
         // Reload actions
         await loadAuditActions(selectedAudit.id);
         // Reload audits to update action counts
@@ -1013,7 +1097,7 @@ const AuditsPage: React.FC = () => {
       const sector = auditAny.sector_name || auditAny.sector || '';
       const directorate = auditAny.directorate_name || auditAny.directorate || '';
       const sectorDirectorate = sector && directorate ? `${sector} / ${directorate}` : (sector || directorate || '-');
-      
+
       return {
         key: `audit-${audit.id}`,
         displayId: `#${audit.id.toString().padStart(3, '0')}`,
@@ -1168,199 +1252,199 @@ const AuditsPage: React.FC = () => {
           <CardContent sx={{ py: 1, px: 1.5 }}>
             {/* Single Row: All Filters */}
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, alignItems: 'center' }}>
-                <Box sx={{ flex: '0 0 100px', minWidth: 100 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Genel ara"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Search fontSize="small" />
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{ '& .MuiInputBase-input': { fontSize: '0.7rem' } }}
-                  />
-                </Box>
-                <Box sx={{ flex: '0 0 100px' }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel sx={{ fontSize: '0.7rem' }}>Bölüm</InputLabel>
-                    <Select
-                      value={departmentFilter}
-                      label="Bölüm"
-                      onChange={(e) => setDepartmentFilter(e.target.value)}
-                      sx={{ fontSize: '0.7rem' }}
-                    >
-                      <MenuItem value="all">Tümü</MenuItem>
-                      {departments.map((dept) => (
-                        <MenuItem key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '0 0 100px' }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel sx={{ fontSize: '0.7rem' }}>Alan</InputLabel>
-                    <Select
-                      value={areaFilter}
-                      label="Alan"
-                      onChange={(e) => setAreaFilter(e.target.value)}
-                      sx={{ fontSize: '0.7rem' }}
-                    >
-                      <MenuItem value="all">Tümü</MenuItem>
-                      {areas.map((area) => (
-                        <MenuItem key={area.id} value={area.id}>
-                          {area.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '0 0 100px' }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel sx={{ fontSize: '0.7rem' }}>Denetleyen</InputLabel>
-                    <Select
-                      value={auditorFilter}
-                      label="Denetleyen"
-                      onChange={(e) => setAuditorFilter(e.target.value)}
-                      sx={{ fontSize: '0.7rem' }}
-                    >
-                      <MenuItem value="all">Tümü</MenuItem>
-                      {auditors.map((auditor) => (
-                        <MenuItem key={auditor.id} value={auditor.id}>
-                          {auditor.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '0 0 100px' }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel sx={{ fontSize: '0.7rem' }}>Alan Sorumlusu</InputLabel>
-                    <Select
-                      value={areaSupervisorFilter}
-                      label="Alan Sorumlusu"
-                      onChange={(e) => setAreaSupervisorFilter(e.target.value)}
-                      sx={{ fontSize: '0.7rem' }}
-                    >
-                      <MenuItem value="all">Tümü</MenuItem>
-                      {areaSupervisors.map((supervisor) => (
-                        <MenuItem key={supervisor.id} value={supervisor.name}>
-                          {supervisor.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '0 0 100px' }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel sx={{ fontSize: '0.7rem' }}>Durum</InputLabel>
-                    <Select
-                      value={statusFilter}
-                      label="Durum"
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      sx={{ fontSize: '0.7rem' }}
-                    >
-                      <MenuItem value="all">Tümü</MenuItem>
-                      <MenuItem value="devam">Devam</MenuItem>
-                      <MenuItem value="denetlendi">Denetlendi</MenuItem>
-                      <MenuItem value="tamamlandı">Tamamlandı</MenuItem>
-                      <MenuItem value="yayınlandı">Yayınlandı</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '0 0 100px' }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel sx={{ fontSize: '0.7rem' }}>Aksiyon</InputLabel>
-                    <Select
-                      value={actionFilter}
-                      label="Aksiyon"
-                      onChange={(e) => setActionFilter(e.target.value)}
-                      sx={{ fontSize: '0.7rem' }}
-                    >
-                      <MenuItem value="all">Tümü</MenuItem>
-                      <MenuItem value="with_open">Açık Aksiyon Var</MenuItem>
-                      <MenuItem value="without_open">Açık Aksiyon Yok</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '0 0 80px' }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel sx={{ fontSize: '0.7rem' }}>5S Min</InputLabel>
-                    <Select
-                      value={levelMinFilter}
-                      label="5S Min"
-                      onChange={(e) => setLevelMinFilter(e.target.value)}
-                      sx={{ fontSize: '0.7rem' }}
-                    >
-                      <MenuItem value="">Tümü</MenuItem>
-                      <MenuItem value="1S">1S</MenuItem>
-                      <MenuItem value="2S">2S</MenuItem>
-                      <MenuItem value="3S">3S</MenuItem>
-                      <MenuItem value="4S">4S</MenuItem>
-                      <MenuItem value="5S">5S</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '0 0 80px' }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel sx={{ fontSize: '0.7rem' }}>5S Max</InputLabel>
-                    <Select
-                      value={levelMaxFilter}
-                      label="5S Max"
-                      onChange={(e) => setLevelMaxFilter(e.target.value)}
-                      sx={{ fontSize: '0.7rem' }}
-                    >
-                      <MenuItem value="">Tümü</MenuItem>
-                      <MenuItem value="1S">1S</MenuItem>
-                      <MenuItem value="2S">2S</MenuItem>
-                      <MenuItem value="3S">3S</MenuItem>
-                      <MenuItem value="4S">4S</MenuItem>
-                      <MenuItem value="5S">5S</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '0 0 100px' }}>
-                  <TextField
-                    label="Tarih Başlangıç"
-                    type="date"
-                    size="small"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    InputLabelProps={{ shrink: true, sx: { fontSize: '0.7rem' } }}
-                    sx={{ '& .MuiInputBase-input': { fontSize: '0.7rem' } }}
-                    fullWidth
-                  />
-                </Box>
-                <Box sx={{ flex: '0 0 100px' }}>
-                  <TextField
-                    label="Tarih Bitiş"
-                    type="date"
-                    size="small"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    InputLabelProps={{ shrink: true, sx: { fontSize: '0.7rem' } }}
-                    sx={{ '& .MuiInputBase-input': { fontSize: '0.7rem' } }}
-                    fullWidth
-                  />
-                </Box>
-                <Box sx={{ flex: '0 0 auto' }}>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<GetApp />}
-                    color="success"
-                    onClick={handleExport}
+              <Box sx={{ flex: '0 0 100px', minWidth: 100 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Genel ara"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ '& .MuiInputBase-input': { fontSize: '0.7rem' } }}
+                />
+              </Box>
+              <Box sx={{ flex: '0 0 100px' }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel sx={{ fontSize: '0.7rem' }}>Bölüm</InputLabel>
+                  <Select
+                    value={departmentFilter}
+                    label="Bölüm"
+                    onChange={(e) => setDepartmentFilter(e.target.value)}
                     sx={{ fontSize: '0.7rem' }}
                   >
-                    Excel
-                  </Button>
-                </Box>
+                    <MenuItem value="all">Tümü</MenuItem>
+                    {departments.map((dept) => (
+                      <MenuItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box sx={{ flex: '0 0 100px' }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel sx={{ fontSize: '0.7rem' }}>Alan</InputLabel>
+                  <Select
+                    value={areaFilter}
+                    label="Alan"
+                    onChange={(e) => setAreaFilter(e.target.value)}
+                    sx={{ fontSize: '0.7rem' }}
+                  >
+                    <MenuItem value="all">Tümü</MenuItem>
+                    {areas.map((area) => (
+                      <MenuItem key={area.id} value={area.id}>
+                        {area.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box sx={{ flex: '0 0 100px' }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel sx={{ fontSize: '0.7rem' }}>Denetleyen</InputLabel>
+                  <Select
+                    value={auditorFilter}
+                    label="Denetleyen"
+                    onChange={(e) => setAuditorFilter(e.target.value)}
+                    sx={{ fontSize: '0.7rem' }}
+                  >
+                    <MenuItem value="all">Tümü</MenuItem>
+                    {auditors.map((auditor) => (
+                      <MenuItem key={auditor.id} value={auditor.id}>
+                        {auditor.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box sx={{ flex: '0 0 100px' }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel sx={{ fontSize: '0.7rem' }}>Alan Sorumlusu</InputLabel>
+                  <Select
+                    value={areaSupervisorFilter}
+                    label="Alan Sorumlusu"
+                    onChange={(e) => setAreaSupervisorFilter(e.target.value)}
+                    sx={{ fontSize: '0.7rem' }}
+                  >
+                    <MenuItem value="all">Tümü</MenuItem>
+                    {areaSupervisors.map((supervisor) => (
+                      <MenuItem key={supervisor.id} value={supervisor.name}>
+                        {supervisor.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box sx={{ flex: '0 0 100px' }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel sx={{ fontSize: '0.7rem' }}>Durum</InputLabel>
+                  <Select
+                    value={statusFilter}
+                    label="Durum"
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    sx={{ fontSize: '0.7rem' }}
+                  >
+                    <MenuItem value="all">Tümü</MenuItem>
+                    <MenuItem value="devam">Devam</MenuItem>
+                    <MenuItem value="denetlendi">Denetlendi</MenuItem>
+                    <MenuItem value="tamamlandı">Tamamlandı</MenuItem>
+                    <MenuItem value="yayınlandı">Yayınlandı</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box sx={{ flex: '0 0 100px' }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel sx={{ fontSize: '0.7rem' }}>Aksiyon</InputLabel>
+                  <Select
+                    value={actionFilter}
+                    label="Aksiyon"
+                    onChange={(e) => setActionFilter(e.target.value)}
+                    sx={{ fontSize: '0.7rem' }}
+                  >
+                    <MenuItem value="all">Tümü</MenuItem>
+                    <MenuItem value="with_open">Açık Aksiyon Var</MenuItem>
+                    <MenuItem value="without_open">Açık Aksiyon Yok</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box sx={{ flex: '0 0 80px' }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel sx={{ fontSize: '0.7rem' }}>5S Min</InputLabel>
+                  <Select
+                    value={levelMinFilter}
+                    label="5S Min"
+                    onChange={(e) => setLevelMinFilter(e.target.value)}
+                    sx={{ fontSize: '0.7rem' }}
+                  >
+                    <MenuItem value="">Tümü</MenuItem>
+                    <MenuItem value="1S">1S</MenuItem>
+                    <MenuItem value="2S">2S</MenuItem>
+                    <MenuItem value="3S">3S</MenuItem>
+                    <MenuItem value="4S">4S</MenuItem>
+                    <MenuItem value="5S">5S</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box sx={{ flex: '0 0 80px' }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel sx={{ fontSize: '0.7rem' }}>5S Max</InputLabel>
+                  <Select
+                    value={levelMaxFilter}
+                    label="5S Max"
+                    onChange={(e) => setLevelMaxFilter(e.target.value)}
+                    sx={{ fontSize: '0.7rem' }}
+                  >
+                    <MenuItem value="">Tümü</MenuItem>
+                    <MenuItem value="1S">1S</MenuItem>
+                    <MenuItem value="2S">2S</MenuItem>
+                    <MenuItem value="3S">3S</MenuItem>
+                    <MenuItem value="4S">4S</MenuItem>
+                    <MenuItem value="5S">5S</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box sx={{ flex: '0 0 100px' }}>
+                <TextField
+                  label="Tarih Başlangıç"
+                  type="date"
+                  size="small"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  InputLabelProps={{ shrink: true, sx: { fontSize: '0.7rem' } }}
+                  sx={{ '& .MuiInputBase-input': { fontSize: '0.7rem' } }}
+                  fullWidth
+                />
+              </Box>
+              <Box sx={{ flex: '0 0 100px' }}>
+                <TextField
+                  label="Tarih Bitiş"
+                  type="date"
+                  size="small"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  InputLabelProps={{ shrink: true, sx: { fontSize: '0.7rem' } }}
+                  sx={{ '& .MuiInputBase-input': { fontSize: '0.7rem' } }}
+                  fullWidth
+                />
+              </Box>
+              <Box sx={{ flex: '0 0 auto' }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<GetApp />}
+                  color="success"
+                  onClick={handleExport}
+                  sx={{ fontSize: '0.7rem' }}
+                >
+                  Excel
+                </Button>
+              </Box>
             </Box>
           </CardContent>
         </Card>
@@ -1517,17 +1601,17 @@ const AuditsPage: React.FC = () => {
                         return (
                           <Tooltip title={`${progress.answered}/${progress.total} soru cevaplandı (%${percentage})`}>
                             <Box sx={{ width: 70 }}>
-                              <LinearProgress 
-                                variant="determinate" 
-                                value={percentage} 
-                                sx={{ 
-                                  height: 6, 
+                              <LinearProgress
+                                variant="determinate"
+                                value={percentage}
+                                sx={{
+                                  height: 6,
                                   borderRadius: 4,
                                   bgcolor: 'grey.200',
                                   '& .MuiLinearProgress-bar': {
                                     bgcolor: percentage === 100 ? 'success.main' : percentage >= 50 ? 'warning.main' : 'error.main'
                                   }
-                                }} 
+                                }}
                               />
                               <Typography variant="caption" sx={{ fontSize: '0.6rem', mt: 0.5, display: 'block' }}>
                                 %{percentage}
@@ -1538,22 +1622,22 @@ const AuditsPage: React.FC = () => {
                       })()}
                     </TableCell>
                     <TableCell sx={{ padding: '8px 4px' }}>
-                        <Chip
-                          label={row.level || 'Başlangıç'}
-                          size="small"
-                          color={getLevelColor(row.level)}
-                          variant="outlined"
-                          sx={{ fontSize: '0.65rem', height: 18 }}
-                        />
+                      <Chip
+                        label={row.level || 'Başlangıç'}
+                        size="small"
+                        color={getLevelColor(row.level)}
+                        variant="outlined"
+                        sx={{ fontSize: '0.65rem', height: 18 }}
+                      />
                     </TableCell>
                     <TableCell sx={{ padding: '8px 4px' }}>
-                      <Tooltip 
+                      <Tooltip
                         title={
-                          (row.totalActions || 0) === 0 
-                            ? 'Açık Aksiyon Yok' 
+                          (row.totalActions || 0) === 0
+                            ? 'Açık Aksiyon Yok'
                             : (row.openActions || 0) === 0
-                            ? `Toplam ${row.totalActions} aksiyon tamamlandı`
-                            : `Kritik Aksiyon Var: ${row.openActions} açık, ${row.closedActions} tamamlandı`
+                              ? `Toplam ${row.totalActions} aksiyon tamamlandı`
+                              : `Kritik Aksiyon Var: ${row.openActions} açık, ${row.closedActions} tamamlandı`
                         }
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -1562,8 +1646,8 @@ const AuditsPage: React.FC = () => {
                               label={`${row.openActions || 0}/${row.totalActions}`}
                               size="small"
                               color={getActionStatusColor(row.openActions || 0, row.totalActions || 0)}
-                              sx={{ 
-                                fontSize: '0.65rem', 
+                              sx={{
+                                fontSize: '0.65rem',
                                 height: 18,
                                 cursor: 'pointer',
                                 '&:hover': { opacity: 0.8 }
@@ -1578,7 +1662,7 @@ const AuditsPage: React.FC = () => {
                       </Tooltip>
                     </TableCell>
                     <TableCell sx={{ padding: '8px 4px' }}>
-                      <Tooltip 
+                      <Tooltip
                         title={
                           (overdueActionsMap.get(row.audit.id) || 0) > 0
                             ? `${overdueActionsMap.get(row.audit.id)} geçmiş aksiyon var`
@@ -1591,8 +1675,8 @@ const AuditsPage: React.FC = () => {
                               label={`${overdueActionsMap.get(row.audit.id)}`}
                               size="small"
                               color="error"
-                              sx={{ 
-                                fontSize: '0.65rem', 
+                              sx={{
+                                fontSize: '0.65rem',
                                 height: 18,
                                 cursor: 'pointer',
                                 '&:hover': { opacity: 0.8 }
@@ -1611,8 +1695,8 @@ const AuditsPage: React.FC = () => {
                         {row.totalScore !== undefined && row.maxPossibleScore && row.maxPossibleScore > 0
                           ? `${row.totalScore}/${row.maxPossibleScore} (%${Math.round((row.totalScore / row.maxPossibleScore) * 100)})`
                           : row.totalScore !== undefined && row.totalScore > 0
-                          ? `${row.totalScore}`
-                          : '-'}
+                            ? `${row.totalScore}`
+                            : '-'}
                       </Typography>
                     </TableCell>
                     <TableCell sx={{ padding: '8px 4px' }}>
@@ -1623,9 +1707,9 @@ const AuditsPage: React.FC = () => {
                     <TableCell sx={{ padding: '8px 4px' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {getStatusIcon(row.status)}
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
+                        <Typography
+                          variant="caption"
+                          sx={{
                             fontSize: '0.65rem',
                             color: getStatusColor(row.status),
                             fontWeight: 500
@@ -1771,8 +1855,8 @@ const AuditsPage: React.FC = () => {
                   <ListItem sx={{ py: 0.5 }}>
                     <ListItemText
                       primary="Toplam Puan"
-                      secondary={selectedAudit.status === 'published' ? 
-                        `${selectedAudit.total_score}/${selectedAudit.max_possible_score} (%${Math.round((selectedAudit.total_score / selectedAudit.max_possible_score) * 100)})` : 
+                      secondary={selectedAudit.status === 'published' ?
+                        `${selectedAudit.total_score}/${selectedAudit.max_possible_score} (%${Math.round((selectedAudit.total_score / selectedAudit.max_possible_score) * 100)})` :
                         'Henüz puanlanmamış'
                       }
                       primaryTypographyProps={{ fontSize: '0.8rem' }}
@@ -1782,8 +1866,8 @@ const AuditsPage: React.FC = () => {
                   <ListItem sx={{ py: 0.5 }}>
                     <ListItemText
                       primary="Aksiyon Durumu"
-                      secondary={(selectedAudit.total_actions || 0) > 0 ? 
-                        `${selectedAudit.open_actions} açık, ${selectedAudit.closed_actions} kapalı` : 
+                      secondary={(selectedAudit.total_actions || 0) > 0 ?
+                        `${selectedAudit.open_actions} açık, ${selectedAudit.closed_actions} kapalı` :
                         'Aksiyon yok'
                       }
                       primaryTypographyProps={{ fontSize: '0.8rem' }}
@@ -1806,17 +1890,17 @@ const AuditsPage: React.FC = () => {
           </DialogContent>
           <DialogActions sx={{ pt: 1 }}>
             {canAccessButton('Denetimler', 'edit') && (
-            <Button 
-              onClick={() => selectedAudit && handleEdit(selectedAudit)} 
-              size="small"
-              sx={{ fontSize: '0.7rem' }}
-            >
-              Düzenle
-            </Button>
+              <Button
+                onClick={() => selectedAudit && handleEdit(selectedAudit)}
+                size="small"
+                sx={{ fontSize: '0.7rem' }}
+              >
+                Düzenle
+              </Button>
             )}
             {canAccessButton('Denetimler', 'delete') && (
-              <Button 
-                onClick={() => selectedAudit && handleDelete(selectedAudit)} 
+              <Button
+                onClick={() => selectedAudit && handleDelete(selectedAudit)}
                 color="error"
                 size="small"
                 sx={{ fontSize: '0.7rem' }}
@@ -1824,9 +1908,9 @@ const AuditsPage: React.FC = () => {
                 Sil
               </Button>
             )}
-            <Button 
-              onClick={() => selectedAudit && handlePrint(selectedAudit)} 
-              variant="contained" 
+            <Button
+              onClick={() => selectedAudit && handlePrint(selectedAudit)}
+              variant="contained"
               size="small"
               sx={{ fontSize: '0.7rem' }}
             >
@@ -1855,7 +1939,7 @@ const AuditsPage: React.FC = () => {
               <Box>
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                    <strong>Bölüm:</strong> {selectedAudit.department_name} | 
+                    <strong>Bölüm:</strong> {selectedAudit.department_name} |
                     <strong> Tarih:</strong> {format(new Date(selectedAudit.audit_date), 'dd/MM/yyyy')} |
                     <strong> Denetçi:</strong> {selectedAudit.auditor_name}
                   </Typography>
@@ -1940,23 +2024,23 @@ const AuditsPage: React.FC = () => {
                             </TableCell>
                             <TableCell sx={{ fontSize: '0.7rem' }}>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
+                                <Typography
+                                  variant="body2"
+                                  sx={{
                                     fontSize: '0.7rem',
-                                    color: action.target_date && new Date(action.target_date) < new Date() && action.status !== 'closed' 
-                                      ? 'error.main' 
+                                    color: action.target_date && new Date(action.target_date) < new Date() && action.status !== 'closed'
+                                      ? 'error.main'
                                       : 'text.primary'
                                   }}
                                 >
                                   {action.target_date ? format(new Date(action.target_date), 'dd/MM/yyyy') : '-'}
                                 </Typography>
                                 {action.target_date && new Date(action.target_date) < new Date() && action.status !== 'closed' && (
-                                  <Chip 
-                                    label="Gecikmiş" 
-                                    size="small" 
-                                    color="error" 
-                                    sx={{ fontSize: '0.55rem', height: 16 }} 
+                                  <Chip
+                                    label="Gecikmiş"
+                                    size="small"
+                                    color="error"
+                                    sx={{ fontSize: '0.55rem', height: 16 }}
                                   />
                                 )}
                               </Box>
@@ -1978,8 +2062,8 @@ const AuditsPage: React.FC = () => {
                                   size="small"
                                   color={
                                     action.priority === 'Yüksek' ? 'error' :
-                                    action.priority === 'Orta' ? 'warning' :
-                                    'info'
+                                      action.priority === 'Orta' ? 'warning' :
+                                        'info'
                                   }
                                   sx={{ fontSize: '0.6rem', height: 20 }}
                                 />
@@ -1995,6 +2079,15 @@ const AuditsPage: React.FC = () => {
                             </TableCell>
                             <TableCell>
                               <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleViewHistory(action.id)}
+                                  title="Tarihçe"
+                                  sx={{ p: 0.5 }}
+                                >
+                                  <History fontSize="small" />
+                                </IconButton>
+
                                 {actionPermissions['Action_Edit'] && (
                                   <Button
                                     size="small"
@@ -2006,17 +2099,57 @@ const AuditsPage: React.FC = () => {
                                     Düzenle
                                   </Button>
                                 )}
-                                {actionPermissions['Action_Complete'] && (
+
+                                {/* Workflow Buttons */}
+                                {/* Area Responsible: Send to Auditor */}
+                                {action.status === 'open' && (
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    color="primary"
+                                    sx={{ fontSize: '0.6rem', textTransform: 'none', minWidth: 'auto', px: 0.75, py: 0.25 }}
+                                    onClick={() => handleRequestStatusChange(action, 'pending_approval', 'Denetçiye Gönder')}
+                                  >
+                                    Denetçiye Gönder
+                                  </Button>
+                                )}
+
+                                {/* Auditor: Complete or Return */}
+                                {action.status === 'pending_approval' && (
+                                  <>
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      color="success"
+                                      startIcon={<CheckCircle />}
+                                      sx={{ fontSize: '0.6rem', textTransform: 'none', minWidth: 'auto', px: 0.75, py: 0.25 }}
+                                      onClick={() => handleRequestStatusChange(action, 'closed', 'Aksiyonu Kapat (Tamamlandı)')}
+                                    >
+                                      Tamamlandı
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      color="warning"
+                                      sx={{ fontSize: '0.6rem', textTransform: 'none', minWidth: 'auto', px: 0.75, py: 0.25 }}
+                                      onClick={() => handleRequestStatusChange(action, 'open', 'Alan Sorumlusuna İade Et')}
+                                    >
+                                      İade Et
+                                    </Button>
+                                  </>
+                                )}
+
+                                {/* Legacy Complete Button (Only if not using workflow or as fallback for older actions) */}
+                                {actionPermissions['Action_Complete'] && action.status === 'in_progress' && (
                                   <Button
                                     size="small"
                                     variant="contained"
                                     color="success"
                                     startIcon={<CheckCircle />}
                                     sx={{ fontSize: '0.6rem', textTransform: 'none', minWidth: 'auto', px: 0.75, py: 0.25 }}
-                                    onClick={() => handleCompleteAction(action.id)}
-                                    disabled={action.status === 'closed'}
+                                    onClick={() => handleRequestStatusChange(action, 'closed', 'Aksiyonu Tamamla')}
                                   >
-                                    {action.status === 'closed' ? 'Tamamlandı' : 'Tamamla'}
+                                    Tamamla
                                   </Button>
                                 )}
                               </Box>
@@ -2038,16 +2171,16 @@ const AuditsPage: React.FC = () => {
             )}
           </DialogContent>
           <DialogActions sx={{ pt: 1 }}>
-            <Button 
-              onClick={() => setActionsDialogOpen(false)} 
+            <Button
+              onClick={() => setActionsDialogOpen(false)}
               size="small"
               sx={{ fontSize: '0.7rem' }}
             >
               Kapat
             </Button>
             {actionPermissions['Action_Create'] && (
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 size="small"
                 sx={{ fontSize: '0.7rem' }}
                 onClick={() => {
@@ -2091,8 +2224,8 @@ const AuditsPage: React.FC = () => {
                   <Select
                     value={planForm.sectorId || ''}
                     label="Sektör"
-                    onChange={(e) => setPlanForm(prev => ({ 
-                      ...prev, 
+                    onChange={(e) => setPlanForm(prev => ({
+                      ...prev,
                       sectorId: Number(e.target.value) || 0,
                       directorateId: 0, // Reset directorate when sector changes
                       departmentId: 0, // Reset department when sector changes
@@ -2115,8 +2248,8 @@ const AuditsPage: React.FC = () => {
                   <Select
                     value={planForm.directorateId || ''}
                     label="Direktörlük"
-                    onChange={(e) => setPlanForm(prev => ({ 
-                      ...prev, 
+                    onChange={(e) => setPlanForm(prev => ({
+                      ...prev,
                       directorateId: Number(e.target.value) || 0,
                       departmentId: 0, // Reset department when directorate changes
                       areaId: 0 // Reset area when directorate changes
@@ -2144,8 +2277,8 @@ const AuditsPage: React.FC = () => {
                   <Select
                     value={planForm.departmentId || ''}
                     label="Departman"
-                    onChange={(e) => setPlanForm(prev => ({ 
-                      ...prev, 
+                    onChange={(e) => setPlanForm(prev => ({
+                      ...prev,
                       departmentId: Number(e.target.value),
                       areaId: 0 // Reset area when department changes
                     }))}
@@ -2312,7 +2445,7 @@ const AuditsPage: React.FC = () => {
                 <TextField
                   label="Tespit Edilen Uygunsuzluk"
                   value={editingAction.description || ''}
-                  onChange={(e) => setEditingAction({...editingAction, description: e.target.value})}
+                  onChange={(e) => setEditingAction({ ...editingAction, description: e.target.value })}
                   multiline
                   rows={3}
                   fullWidth
@@ -2322,7 +2455,7 @@ const AuditsPage: React.FC = () => {
                 <TextField
                   label="Önerilen Faaliyet"
                   value={editingAction.suggested_activity || ''}
-                  onChange={(e) => setEditingAction({...editingAction, suggested_activity: e.target.value})}
+                  onChange={(e) => setEditingAction({ ...editingAction, suggested_activity: e.target.value })}
                   multiline
                   rows={2}
                   fullWidth
@@ -2332,7 +2465,7 @@ const AuditsPage: React.FC = () => {
                 <TextField
                   label="Planlanan Faaliyet"
                   value={editingAction.planned_activity || ''}
-                  onChange={(e) => setEditingAction({...editingAction, planned_activity: e.target.value})}
+                  onChange={(e) => setEditingAction({ ...editingAction, planned_activity: e.target.value })}
                   multiline
                   rows={2}
                   fullWidth
@@ -2406,9 +2539,9 @@ const AuditsPage: React.FC = () => {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setEditDialogOpen(false)} size="small">İptal</Button>
-            <Button 
-              onClick={() => handleSaveAction(editingAction)} 
-              variant="contained" 
+            <Button
+              onClick={() => handleSaveAction(editingAction)}
+              variant="contained"
               size="small"
               disabled={!editingAction}
             >
@@ -2416,6 +2549,21 @@ const AuditsPage: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* New Dialogs */}
+        <ActionHistoryDialog
+          open={historyDialogOpen}
+          onClose={() => setHistoryDialogOpen(false)}
+          actionId={selectedActionId}
+        />
+
+        <NoteDialog
+          open={noteDialogOpen}
+          title={noteDialogTitle}
+          onClose={() => setNoteDialogOpen(false)}
+          onConfirm={handleConfirmStatusChange}
+          confirmLabel="Onayla"
+        />
       </Container>
     </Fade>
   );

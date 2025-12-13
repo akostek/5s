@@ -53,6 +53,7 @@ const schema = yup.object({
   username: yup.string(),
   sicil: yup.string(),
   email: yup.string().email('Geçerli email adresi girin').required('Email zorunludur'),
+  password: yup.string().min(6, 'Şifre en az 6 karakter olmalıdır'),
   role: yup.string().required('Rol seçimi zorunludur'),
   sector: yup.string().required('Sektör zorunludur'),
   directorate: yup.string().required('Direktörlük zorunludur'),
@@ -90,6 +91,7 @@ const UsersPage: React.FC = () => {
       username: '',
       sicil: '',
       email: '',
+      password: '',
       role: 'denetci',
       sector: 'UGES',
       directorate: '',
@@ -196,6 +198,7 @@ const UsersPage: React.FC = () => {
         username: '',
         sicil: '',
         email: '',
+        password: '',
         role: 'denetci',
         sector: sectors.length > 0 ? sectors[0].name : '',
         directorate: directorates.length > 0 ? directorates[0].name : '',
@@ -241,16 +244,23 @@ const UsersPage: React.FC = () => {
         await apiService.updateUser(editingUser.id, submitData);
         setSnackbar({ open: true, message: 'Kullanıcı başarıyla güncellendi', severity: 'success' });
       } else {
+        // Password is required for new users
+        if (!data.password || data.password.trim().length < 6) {
+          throw new Error('Şifre en az 6 karakter olmalıdır');
+        }
         await apiService.createUser({ 
           ...submitData, 
-          password: '123456'
+          password: data.password
         });
         setSnackbar({ open: true, message: 'Kullanıcı başarıyla oluşturuldu', severity: 'success' });
       }
       setDialogOpen(false);
       await fetchUsers();
     } catch (error: any) {
-      console.error('Error saving user:', error);
+      // Only log in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error saving user:', error);
+      }
       const errorMessage = error?.response?.data?.message || error?.message || 'Kullanıcı kaydedilirken hata oluştu';
       setSnackbar({ open: true, message: errorMessage, severity: 'error' });
     }
@@ -271,7 +281,10 @@ const UsersPage: React.FC = () => {
       setUserToDelete(null);
       await fetchUsers();
     } catch (error: any) {
-      console.error('Error deleting user:', error);
+      // Only log in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error deleting user:', error);
+      }
       const errorMessage = error?.response?.data?.message || 'Kullanıcı silinirken hata oluştu';
       setSnackbar({ open: true, message: errorMessage, severity: 'error' });
       setDeleteDialogOpen(false);
@@ -604,6 +617,24 @@ const UsersPage: React.FC = () => {
                   />
                 )}
               />
+              {!editingUser && (
+                <Controller
+                  name="password"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      size="small"
+                      fullWidth
+                      type="password"
+                      label="Şifre"
+                      placeholder="En az 6 karakter"
+                      error={!!errors.password}
+                      helperText={errors.password?.message || 'Yeni kullanıcı için şifre belirleyin'}
+                    />
+                  )}
+                />
+              )}
               <Controller
                 name="role"
                 control={control}

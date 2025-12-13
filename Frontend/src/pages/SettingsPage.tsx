@@ -51,6 +51,8 @@ import {
   Security,
 } from '@mui/icons-material';
 import { CircularProgress } from '@mui/material';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -128,6 +130,16 @@ const SettingsPage: React.FC = () => {
   const [directorateDescription, setDirectorateDescription] = useState('');
   const [directorateSectorId, setDirectorateSectorId] = useState<number | null>(null);
 
+  // Duyurular state
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
+  const [announcementDialogOpen, setAnnouncementDialogOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<any | null>(null);
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcementContent, setAnnouncementContent] = useState('');
+  const [announcementDate, setAnnouncementDate] = useState(new Date().toISOString().split('T')[0]);
+  const [announcementIsActive, setAnnouncementIsActive] = useState(true);
+
   // Yetkiler state
   const [permissions, setPermissions] = useState<any[]>([]);
   const [loadingPermissions, setLoadingPermissions] = useState(false);
@@ -199,6 +211,7 @@ const SettingsPage: React.FC = () => {
     fetchDepartments();
     fetchAreas();
     fetchScoreThresholds();
+    fetchAnnouncements();
     fetchCanViewYetkilerTab();
   }, []);
 
@@ -314,6 +327,64 @@ const SettingsPage: React.FC = () => {
       setDirectorates(data);
     } catch (error) {
       console.error('Error fetching directorates:', error);
+    }
+  };
+
+  const fetchAnnouncements = async () => {
+    try {
+      setLoadingAnnouncements(true);
+      const data = await apiService.getAnnouncements(); // Tüm duyuruları çek
+      setAnnouncements(data);
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+    } finally {
+      setLoadingAnnouncements(false);
+    }
+  };
+
+  const handleSaveAnnouncement = async () => {
+    try {
+      if (!announcementTitle.trim() || !announcementContent.trim()) {
+        alert('Başlık ve içerik zorunludur');
+        return;
+      }
+
+      const announcementData = {
+        title: announcementTitle,
+        content: announcementContent,
+        announcementDate: announcementDate,
+        isActive: announcementIsActive,
+      };
+
+      if (editingAnnouncement) {
+        await apiService.updateAnnouncement(editingAnnouncement.id, announcementData);
+        alert('Duyuru güncellendi');
+      } else {
+        await apiService.createAnnouncement(announcementData);
+        alert('Duyuru oluşturuldu');
+      }
+
+      setAnnouncementDialogOpen(false);
+      setEditingAnnouncement(null);
+      setAnnouncementTitle('');
+      setAnnouncementContent('');
+      setAnnouncementDate(new Date().toISOString().split('T')[0]);
+      setAnnouncementIsActive(true);
+      await fetchAnnouncements();
+    } catch (error: any) {
+      alert(error?.response?.data?.message || 'Duyuru kaydedilirken hata oluştu');
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id: number) => {
+    if (window.confirm('Bu duyuruyu silmek istediğinizden emin misiniz?')) {
+      try {
+        await apiService.deleteAnnouncement(id);
+        alert('Duyuru silindi');
+        await fetchAnnouncements();
+      } catch (error: any) {
+        alert(error?.response?.data?.message || 'Duyuru silinirken hata oluştu');
+      }
     }
   };
 
@@ -660,6 +731,7 @@ const SettingsPage: React.FC = () => {
           >
             <Tab icon={<SettingsIcon />} iconPosition="start" label="Puan Eşikleri" />
             <Tab icon={<QuestionAnswer />} iconPosition="start" label="Sorular" />
+            <Tab icon={<Notifications />} iconPosition="start" label="Duyurular" />
             <Tab icon={<Business />} iconPosition="start" label="Sektörler" />
             <Tab icon={<Business />} iconPosition="start" label="Direktörlükler" />
             {canViewYetkilerTab && (
@@ -893,8 +965,195 @@ const SettingsPage: React.FC = () => {
               )}
             </TabPanel>
 
-            {/* Sektörler */}
+            {/* Duyurular */}
             <TabPanel value={activeTab} index={2}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box>
+                  <Typography variant="h6" fontWeight={600}>Duyurular</Typography>
+                  <Typography variant="body2" color="text.secondary">Sistem duyurularını yönetin</Typography>
+                </Box>
+                {canAccessButton('Ayarlar', 'new') && (
+                <Button 
+                  variant="contained" 
+                  startIcon={<Add />} 
+                  onClick={() => {
+                    setEditingAnnouncement(null);
+                    setAnnouncementTitle('');
+                    setAnnouncementContent('');
+                    setAnnouncementDate(new Date().toISOString().split('T')[0]);
+                    setAnnouncementIsActive(true);
+                    setAnnouncementDialogOpen(true);
+                  }} 
+                  size="small"
+                >
+                  Yeni Duyuru Ekle
+                </Button>
+                )}
+              </Box>
+              {loadingAnnouncements ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell sx={{ fontWeight: 600, fontSize: '0.8rem' }}>Tarih</TableCell>
+                        <TableCell sx={{ fontWeight: 600, fontSize: '0.8rem' }}>Başlık</TableCell>
+                        <TableCell sx={{ fontWeight: 600, fontSize: '0.8rem' }}>İçerik</TableCell>
+                        <TableCell sx={{ fontWeight: 600, fontSize: '0.8rem' }}>Durum</TableCell>
+                        <TableCell sx={{ fontWeight: 600, fontSize: '0.8rem' }}>İşlemler</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {announcements.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} sx={{ textAlign: 'center', py: 3 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Henüz duyuru bulunmamaktadır.
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        announcements.map((announcement) => (
+                          <TableRow key={announcement.id} hover>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                                {format(new Date(announcement.announcementDate), 'd MMMM yyyy', { locale: tr })}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                                {announcement.title}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  fontSize: '0.75rem',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  maxWidth: 300,
+                                }}
+                              >
+                                {announcement.content}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip 
+                                label={announcement.isActive ? 'Aktif' : 'Pasif'} 
+                                size="small" 
+                                color={announcement.isActive ? 'success' : 'default'} 
+                                sx={{ fontSize: '0.7rem', height: 20 }} 
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                {canAccessButton('Ayarlar', 'edit') && (
+                                <IconButton 
+                                  size="small" 
+                                  onClick={() => { 
+                                    setEditingAnnouncement(announcement); 
+                                    setAnnouncementTitle(announcement.title);
+                                    setAnnouncementContent(announcement.content);
+                                    setAnnouncementDate(new Date(announcement.announcementDate).toISOString().split('T')[0]);
+                                    setAnnouncementIsActive(announcement.isActive);
+                                    setAnnouncementDialogOpen(true); 
+                                  }} 
+                                  sx={{ color: 'primary.main' }}
+                                >
+                                  <Edit fontSize="small" />
+                                </IconButton>
+                                )}
+                                {canAccessButton('Ayarlar', 'delete') && (
+                                <IconButton 
+                                  size="small" 
+                                  onClick={() => handleDeleteAnnouncement(announcement.id)} 
+                                  sx={{ color: 'error.main' }}
+                                >
+                                  <Delete fontSize="small" />
+                                </IconButton>
+                                )}
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+
+              {/* Duyuru Dialog */}
+              <Dialog open={announcementDialogOpen} onClose={() => setAnnouncementDialogOpen(false)} maxWidth="md" fullWidth>
+                <DialogTitle>
+                  {editingAnnouncement ? 'Duyuru Düzenle' : 'Yeni Duyuru Ekle'}
+                </DialogTitle>
+                <DialogContent>
+                  <Stack spacing={2} sx={{ mt: 1 }}>
+                    <TextField
+                      label="Duyuru Başlığı"
+                      fullWidth
+                      size="small"
+                      value={announcementTitle}
+                      onChange={(e) => setAnnouncementTitle(e.target.value)}
+                      required
+                    />
+                    <TextField
+                      label="Duyuru Tarihi"
+                      type="date"
+                      fullWidth
+                      size="small"
+                      value={announcementDate}
+                      onChange={(e) => setAnnouncementDate(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      required
+                    />
+                    <TextField
+                      label="Duyuru İçeriği"
+                      fullWidth
+                      multiline
+                      rows={6}
+                      value={announcementContent}
+                      onChange={(e) => setAnnouncementContent(e.target.value)}
+                      required
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={announcementIsActive}
+                          onChange={(e) => setAnnouncementIsActive(e.target.checked)}
+                        />
+                      }
+                      label="Aktif"
+                    />
+                  </Stack>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => {
+                    setAnnouncementDialogOpen(false);
+                    setEditingAnnouncement(null);
+                    setAnnouncementTitle('');
+                    setAnnouncementContent('');
+                    setAnnouncementDate(new Date().toISOString().split('T')[0]);
+                    setAnnouncementIsActive(true);
+                  }}>
+                    İptal
+                  </Button>
+                  <Button variant="contained" onClick={handleSaveAnnouncement}>
+                    {editingAnnouncement ? 'Güncelle' : 'Oluştur'}
+                  </Button>
+                </DialogActions>
+              </Dialog>
+            </TabPanel>
+
+            {/* Sektörler */}
+            <TabPanel value={activeTab} index={3}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Box>
                   <Typography variant="h6" fontWeight={600}>Sektörler</Typography>
@@ -963,7 +1222,7 @@ const SettingsPage: React.FC = () => {
             </TabPanel>
 
             {/* Direktörlükler */}
-            <TabPanel value={activeTab} index={3}>
+            <TabPanel value={activeTab} index={4}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Box>
                   <Typography variant="h6" fontWeight={600}>Direktörlükler</Typography>
@@ -1037,7 +1296,7 @@ const SettingsPage: React.FC = () => {
 
             {/* Yetkiler - Backend'den kontrol edilir */}
             {canViewYetkilerTab && (
-              <TabPanel value={activeTab} index={4}>
+              <TabPanel value={activeTab} index={5}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                   <Box>
                     <Typography variant="h6" fontWeight={600}>Yetkiler</Typography>

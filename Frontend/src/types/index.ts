@@ -27,6 +27,7 @@ export interface User {
   createdAt?: string; // PascalCase from backend
   updated_at?: string;
   updatedAt?: string; // PascalCase from backend
+  isDemo?: boolean; // Demo user flag
 }
 
 // Department types
@@ -146,7 +147,7 @@ export interface Action {
   targetDate?: string; // PascalCase from backend
   responsible_person?: string;
   responsiblePerson?: string; // PascalCase from backend
-  status: 'open' | 'in_progress' | 'closed' | 'Open' | 'InProgress' | 'Closed';
+  status: 'open' | 'in_progress' | 'closed' | 'pending_approval' | 'Open' | 'InProgress' | 'Closed' | 'PendingApproval';
   priority?: 'Düşük' | 'Orta' | 'Yüksek';
   question_text?: string;
   questionText?: string; // PascalCase from backend
@@ -159,6 +160,16 @@ export interface Action {
   createdAt?: string; // PascalCase from backend
   updated_at?: string;
   updatedAt?: string; // PascalCase from backend
+}
+
+export interface ActionHistory {
+  id: number;
+  actionId: number;
+  statusFrom: number | string;
+  statusTo: number | string;
+  changedBy?: string;
+  comment?: string;
+  createdAt: string;
 }
 
 // Audit Action types (for detail view)
@@ -296,6 +307,18 @@ export interface Area {
   isActive: boolean;
   createdAt: string;
   updatedAt?: string;
+}
+
+// Announcement types
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  announcementDate: string;
+  isActive: boolean;
+  createdById?: number | null;
+  createdAt: string;
+  updatedAt?: string | null;
 }
 
 // Form types

@@ -22,6 +22,7 @@ type AuthAction =
 // Auth context interface
 interface AuthContextType extends AuthState {
   login: (credentials: LoginRequest) => Promise<void>;
+  loginWithKeycloak: (code: string) => Promise<void>;
   logout: () => void;
   updateUser: (user: User) => void;
 }
@@ -30,7 +31,7 @@ interface AuthContextType extends AuthState {
 const getInitialState = (): AuthState => {
   const token = localStorage.getItem('token');
   const userStr = localStorage.getItem('user');
-  
+
   if (token && userStr) {
     try {
       const user = JSON.parse(userStr);
@@ -45,7 +46,7 @@ const getInitialState = (): AuthState => {
       localStorage.removeItem('user');
     }
   }
-  
+
   return {
     user: null,
     token: null,
@@ -118,7 +119,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
-    
+
     if (!token) {
       dispatch({ type: 'SET_LOADING', payload: false });
     } else {
@@ -161,44 +162,65 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   // Login function
-  const login = async (credentials: LoginRequest) => {
+  const login = React.useCallback(async (credentials: LoginRequest) => {
     try {
       dispatch({ type: 'LOGIN_START' });
       const response = await apiService.login(credentials);
-      
+
       // Save to localStorage
       localStorage.setItem('token', response.token);
       localStorage.setItem('user', JSON.stringify(response.user));
-      
-      dispatch({ 
-        type: 'LOGIN_SUCCESS', 
-        payload: { user: response.user, token: response.token } 
+
+      dispatch({
+        type: 'LOGIN_SUCCESS',
+        payload: { user: response.user, token: response.token }
       });
     } catch (error) {
       dispatch({ type: 'LOGIN_FAILURE' });
       throw error;
     }
-  };
+  }, []);
+
+  // Keycloak Login function
+  const loginWithKeycloak = React.useCallback(async (code: string) => {
+    try {
+      dispatch({ type: 'LOGIN_START' });
+      const response = await apiService.loginWithKeycloak(code);
+
+      // Save to localStorage
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+
+      dispatch({
+        type: 'LOGIN_SUCCESS',
+        payload: { user: response.user, token: response.token }
+      });
+    } catch (error) {
+      dispatch({ type: 'LOGIN_FAILURE' });
+      throw error;
+    }
+  }, []);
 
   // Logout function
-  const logout = () => {
+  const logout = React.useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     dispatch({ type: 'LOGOUT' });
-  };
+  }, []);
 
   // Update user function
-  const updateUser = (user: User) => {
+  const updateUser = React.useCallback((user: User) => {
     localStorage.setItem('user', JSON.stringify(user));
     dispatch({ type: 'UPDATE_USER', payload: user });
-  };
+  }, []);
 
-  const value: AuthContextType = {
+  const value: AuthContextType = React.useMemo(() => ({
     ...state,
     login,
+    loginWithKeycloak,
     logout,
     updateUser,
-  };
+  }), [state, login, loginWithKeycloak, logout, updateUser]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -222,28 +244,28 @@ export const useAuth = (): AuthContextType => {
 // Backend will enforce actual role-based restrictions
 export const useRole = () => {
   const { user } = useAuth();
-  
+
   // All role checks return true - backend handles authorization
   const hasRole = (roles: string | string[]): boolean => {
     return true; // Backend handles role validation
   };
-  
+
   const canManageUsers = () => {
     return true; // Backend handles authorization
   };
-  
+
   const canManageDepartments = () => {
     return true; // Backend handles authorization
   };
-  
+
   const canManageSettings = () => {
     return true; // Backend handles authorization
   };
-  
+
   const canCreateAudits = () => {
     return true; // Backend handles authorization
   };
-  
+
   const canViewReports = () => {
     return true; // Backend handles authorization
   };

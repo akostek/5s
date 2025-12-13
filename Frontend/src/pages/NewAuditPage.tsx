@@ -75,7 +75,7 @@ const NewAuditPage: React.FC = () => {
         setQuestions(allQuestions);
         setFilteredQuestions(allQuestions);
         setUsers(allUsers || []);
-        
+
         // Get audit info for area supervisor
         const currentAudit = audits.find((a: any) => a.id === auditId);
         const areaSupervisor = currentAudit?.area_supervisor;
@@ -101,7 +101,7 @@ const NewAuditPage: React.FC = () => {
           } else if (responseValue === 2 || responseValue === '2') {
             responsesMap.set(questionId, 'High');
           }
-          
+
           // Load existing images - convert to full URLs if needed
           if (r.imageUrls && Array.isArray(r.imageUrls) && r.imageUrls.length > 0) {
             const fullUrls = r.imageUrls.map((url: string) => {
@@ -119,7 +119,7 @@ const NewAuditPage: React.FC = () => {
         // Load existing actions
         const actionsMap = new Map<number, ActionFormData[]>();
         const actionImagesMap = new Map<string, string[]>();
-        
+
         // Group actions by questionId
         const actionsByQuestion = new Map<number, any[]>();
         existingActions.forEach((action: any) => {
@@ -166,12 +166,12 @@ const NewAuditPage: React.FC = () => {
               planned_activity: plannedActivity,
               responsible_person: responsiblePerson,
               target_date: targetDateStr,
-              priority: (action.priority === 'Düşük' || action.priority === 'Orta' || action.priority === 'Yüksek') 
-                ? action.priority 
+              priority: (action.priority === 'Düşük' || action.priority === 'Orta' || action.priority === 'Yüksek')
+                ? action.priority
                 : 'Orta' as 'Düşük' | 'Orta' | 'Yüksek',
             };
           });
-          
+
           if (actionFormsData.length > 0) {
             actionsMap.set(questionId, actionFormsData);
           }
@@ -218,7 +218,7 @@ const NewAuditPage: React.FC = () => {
     }
 
     setFilteredQuestions(filtered);
-    
+
     // Reset to first question if current index is out of bounds
     if (currentQuestionIndex >= filtered.length && filtered.length > 0) {
       setCurrentQuestionIndex(0);
@@ -234,7 +234,7 @@ const NewAuditPage: React.FC = () => {
 
   const handleResponseChange = (response: 'High' | 'Medium' | 'Low') => {
     if (!currentQuestion) return;
-    
+
     const newResponses = new Map(responses);
     newResponses.set(currentQuestion.id, response);
     setResponses(newResponses);
@@ -304,13 +304,13 @@ const NewAuditPage: React.FC = () => {
       setError('Her soru için maksimum 3 görsel yüklenebilir');
       return;
     }
-    
+
     const filesToAdd = Array.from(files).slice(0, remainingSlots);
-    
+
     try {
       setError(null);
       const uploadResult = await apiService.uploadImages(filesToAdd);
-      
+
       // Update images with uploaded URLs
       const updatedImages = new Map(questionImages);
       updatedImages.set(questionId, [...currentImages, ...uploadResult.imageUrls]);
@@ -343,13 +343,13 @@ const NewAuditPage: React.FC = () => {
       setError('Her aksiyon için maksimum 3 görsel yüklenebilir');
       return;
     }
-    
+
     const filesToAdd = Array.from(files).slice(0, remainingSlots);
-    
+
     try {
       setError(null);
       const uploadResult = await apiService.uploadImages(filesToAdd);
-      
+
       // Update images with uploaded URLs
       const updatedImages = new Map(actionImages);
       updatedImages.set(key, [...currentImages, ...uploadResult.imageUrls]);
@@ -416,13 +416,13 @@ const NewAuditPage: React.FC = () => {
     try {
       setSaving(true);
       setError(null);
-      
+
       // Save all audit responses
       const responsesArray = Array.from(responses.entries());
       for (const [questionId, response] of responsesArray) {
         // Get images for this question
         const images = questionImages.get(questionId) || [];
-        
+
         await apiService.submitAuditResponse({
           auditId,
           questionId,
@@ -560,8 +560,8 @@ const NewAuditPage: React.FC = () => {
         />
 
         <Box sx={{ ml: 'auto' }}>
-          <Chip 
-            label={`${answeredCount} / ${totalCount} cevaplandı`} 
+          <Chip
+            label={`${answeredCount} / ${totalCount} cevaplandı`}
             color={answeredCount === totalCount ? 'success' : 'default'}
           />
         </Box>
@@ -591,9 +591,9 @@ const NewAuditPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box sx={{ mb: 2 }}>
-            <Chip 
-              label={currentQuestion?.categoryName || 'Kategori'} 
-              color="primary" 
+            <Chip
+              label={currentQuestion?.categoryName || 'Kategori'}
+              color="primary"
               size="small"
               sx={{ mb: 2 }}
             />
@@ -610,57 +610,57 @@ const NewAuditPage: React.FC = () => {
             {/* Left Column: Response Options */}
             <Box sx={{ flex: 1 }}>
               <FormControl component="fieldset" fullWidth>
-            <RadioGroup
-              value={currentResponse || ''}
-              onChange={(e) => handleResponseChange(e.target.value as 'High' | 'Medium' | 'Low')}
-            >
-              <RadioLabel
-                value="High"
-                control={<Radio />}
-                label={
-                  <Box>
-                    <Typography variant="body1" fontWeight="bold">
-                      Yüksek ({currentQuestion?.pointsHigh || 3} puan)
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Tam uyum - Tüm kriterler karşılanıyor
-                    </Typography>
-                  </Box>
-                }
-                sx={{ mb: 2, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
-              />
-              <RadioLabel
-                value="Medium"
-                control={<Radio />}
-                label={
-                  <Box>
-                    <Typography variant="body1" fontWeight="bold">
-                      Orta ({currentQuestion?.pointsMedium || 2} puan)
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Kısmi uyum - Bazı kriterler karşılanıyor
-                    </Typography>
-                  </Box>
-                }
-                sx={{ mb: 2, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
-              />
-              <RadioLabel
-                value="Low"
-                control={<Radio />}
-                label={
-                  <Box>
-                    <Typography variant="body1" fontWeight="bold">
-                      Düşük ({currentQuestion?.pointsLow || 1} puan)
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Düşük uyum - Kriterler karşılanmıyor
-                    </Typography>
-                  </Box>
-                }
-                sx={{ mb: 2, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
-              />
-            </RadioGroup>
-          </FormControl>
+                <RadioGroup
+                  value={currentResponse || ''}
+                  onChange={(e) => handleResponseChange(e.target.value as 'High' | 'Medium' | 'Low')}
+                >
+                  <RadioLabel
+                    value="High"
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography variant="body1" fontWeight="bold">
+                          Yüksek ({currentQuestion?.pointsHigh || 3} puan)
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Tam uyum - Tüm kriterler karşılanıyor
+                        </Typography>
+                      </Box>
+                    }
+                    sx={{ mb: 2, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+                  />
+                  <RadioLabel
+                    value="Medium"
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography variant="body1" fontWeight="bold">
+                          Orta ({currentQuestion?.pointsMedium || 2} puan)
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Kısmi uyum - Bazı kriterler karşılanıyor
+                        </Typography>
+                      </Box>
+                    }
+                    sx={{ mb: 2, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+                  />
+                  <RadioLabel
+                    value="Low"
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography variant="body1" fontWeight="bold">
+                          Düşük ({currentQuestion?.pointsLow || 1} puan)
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Düşük uyum - Kriterler karşılanmıyor
+                        </Typography>
+                      </Box>
+                    }
+                    sx={{ mb: 2, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+                  />
+                </RadioGroup>
+              </FormControl>
             </Box>
 
             {/* Right Column: Image Upload */}
@@ -822,7 +822,7 @@ const NewAuditPage: React.FC = () => {
                         </Select>
                       </FormControl>
                     </Box>
-                    
+
                     {/* Action Images */}
                     <Box sx={{ mt: 2, gridColumn: '1 / -1' }}>
                       <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, fontSize: '0.85rem' }}>

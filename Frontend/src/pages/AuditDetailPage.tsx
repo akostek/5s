@@ -129,8 +129,8 @@ const AuditDetailPage: React.FC = () => {
           score: r.pointsAwarded || 0,
           notes: '',
           image_url: undefined,
-          response: (r.response === 'High' || r.response === 2 || r.response === 'high') ? 'high' : 
-                   ((r.response === 'Medium' || r.response === 1 || r.response === 'medium') ? 'medium' : 'low'),
+          response: (r.response === 'High' || r.response === 2 || r.response === 'high') ? 'high' :
+            ((r.response === 'Medium' || r.response === 1 || r.response === 'medium') ? 'medium' : 'low'),
           points_awarded: r.pointsAwarded || 0,
           created_at: r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         }));
@@ -408,7 +408,7 @@ const AuditDetailPage: React.FC = () => {
               Denetim Bilgileri
             </Typography>
             <Divider sx={{ mb: 2 }} />
-            
+
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Business sx={{ mr: 1, color: 'text.secondary', fontSize: 18 }} />
@@ -464,7 +464,7 @@ const AuditDetailPage: React.FC = () => {
               Görseller
             </Typography>
             <Divider sx={{ mb: 2 }} />
-            
+
             {responses.length > 0 && (
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 1, fontSize: '0.85rem', fontWeight: 600 }}>
@@ -541,7 +541,7 @@ const AuditDetailPage: React.FC = () => {
             Soru Cevapları
           </Typography>
           <Divider sx={{ mb: 2 }} />
-          
+
           <TableContainer component={Paper} variant="outlined">
             <Table size="small">
               <TableHead>
@@ -616,7 +616,7 @@ const AuditDetailPage: React.FC = () => {
               Aksiyon Planları ({actions.length})
             </Typography>
             <Divider sx={{ mb: 2 }} />
-            
+
             <TableContainer component={Paper} variant="outlined">
               <Table size="small">
                 <TableHead>

@@ -54,6 +54,7 @@ interface Area {
   department_id: number;
   department_name: string;
   location: string;
+  imageUrl?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -77,8 +78,12 @@ const AreasPage: React.FC = () => {
     name: '',
     description: '',
     department_id: '',
+    imageUrl: '',
     is_active: true,
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -97,6 +102,10 @@ const AreasPage: React.FC = () => {
       // Map areas to include department_name and location
       const mappedAreas = areasData.map((area: any) => {
         const dept = departmentsData.find(d => d.id === area.departmentId);
+        // Debug: Log area data to see what we're getting
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Area data from backend:', area);
+        }
         return {
           id: area.id,
           name: area.name,
@@ -108,6 +117,7 @@ const AreasPage: React.FC = () => {
           directorate: area.directorateName || dept?.directorate || '',
           directorateName: area.directorateName || dept?.directorate || '',
           location: '', // Backend doesn't have location field currently
+          imageUrl: area.imageUrl || area.ImageUrl || area.image_url || '',
           is_active: area.isActive,
           created_at: area.createdAt,
           updated_at: area.UpdatedAt,
@@ -124,22 +134,62 @@ const AreasPage: React.FC = () => {
   };
 
   const handleOpenDialog = (area?: Area) => {
+    // Helper function to get full image URL
+    const getImageFullUrl = (imageUrl: string) => {
+      if (!imageUrl || imageUrl.trim() === '') return '';
+      // If already a full URL (starts with http), return as is
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl;
+      }
+      // If starts with /, it's a relative path - add backend base URL
+      const baseUrl = process.env.REACT_APP_API_URL 
+        ? process.env.REACT_APP_API_URL.replace('/api', '') 
+        : `http://${window.location.hostname}:5000`;
+      return imageUrl.startsWith('/') 
+        ? `${baseUrl}${imageUrl}` 
+        : `${baseUrl}/${imageUrl}`;
+    };
+
     if (area) {
       setEditingArea(area);
+      // Debug: Log area data
+      const rawImageUrl = area.imageUrl || (area as any).ImageUrl || (area as any).image_url || '';
+      const fullImageUrl = getImageFullUrl(rawImageUrl);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Opening dialog for area:', area);
+        console.log('Raw imageUrl:', rawImageUrl);
+        console.log('Full imageUrl:', fullImageUrl);
+      }
+      
       setFormData({
         name: area.name,
         description: area.description,
         department_id: area.department_id.toString(),
+        imageUrl: rawImageUrl, // Keep raw URL for saving
         is_active: area.is_active,
       });
+      // Set preview with full URL for display
+      if (fullImageUrl && fullImageUrl.trim() !== '') {
+        setImagePreview(fullImageUrl);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Setting image preview to:', fullImageUrl);
+        }
+      } else {
+        setImagePreview(null);
+      }
+      setImageFile(null);
     } else {
       setEditingArea(null);
       setFormData({
         name: '',
         description: '',
         department_id: '',
+        imageUrl: '',
         is_active: true,
       });
+      setImagePreview(null);
+      setImageFile(null);
     }
     setOpenDialog(true);
   };
@@ -147,6 +197,53 @@ const AreasPage: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingArea(null);
+    setImagePreview(null);
+    setImageFile(null);
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setSnackbar({ open: true, message: 'Lütfen bir resim dosyası seçin', severity: 'error' });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setSnackbar({ open: true, message: 'Resim boyutu 5MB\'dan küçük olmalıdır', severity: 'error' });
+      return;
+    }
+
+    setImageFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload image
+    try {
+      setUploadingImage(true);
+      const result = await apiService.uploadImage(file);
+      setFormData({ ...formData, imageUrl: result.imageUrl });
+      setSnackbar({ open: true, message: 'Görsel yüklendi', severity: 'success' });
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      setSnackbar({ 
+        open: true, 
+        message: error?.response?.data?.message || 'Görsel yüklenirken hata oluştu', 
+        severity: 'error' 
+      });
+      setImageFile(null);
+      setImagePreview(null);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSave = async () => {
@@ -158,12 +255,17 @@ const AreasPage: React.FC = () => {
       setSnackbar({ open: true, message: 'Bölüm seçimi zorunludur', severity: 'error' });
       return;
     }
+    if (!formData.imageUrl) {
+      setSnackbar({ open: true, message: 'Alan görseli zorunludur', severity: 'error' });
+      return;
+    }
 
     try {
       const areaData = {
         departmentId: parseInt(formData.department_id),
         name: formData.name,
         description: formData.description,
+        imageUrl: formData.imageUrl,
       };
 
       if (editingArea) {
@@ -495,6 +597,78 @@ const AreasPage: React.FC = () => {
               size="small"
               sx={{ '& .MuiInputBase-input': { fontSize: '0.8rem' } }}
             />
+
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, fontSize: '0.8rem', fontWeight: 500 }}>
+                Alan Görseli <span style={{ color: 'red' }}>*</span>
+              </Typography>
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="area-image-upload"
+                type="file"
+                onChange={handleImageChange}
+                disabled={uploadingImage}
+              />
+              <label htmlFor="area-image-upload">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  fullWidth
+                  disabled={uploadingImage}
+                  sx={{ fontSize: '0.8rem', mb: 1 }}
+                >
+                  {uploadingImage ? 'Yükleniyor...' : imageFile ? 'Görsel Değiştir' : 'Görsel Yükle'}
+                </Button>
+              </label>
+              {(() => {
+                // Helper to get full image URL
+                const getImageFullUrl = (imageUrl: string) => {
+                  if (!imageUrl || imageUrl.trim() === '') return '';
+                  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+                    return imageUrl;
+                  }
+                  const baseUrl = process.env.REACT_APP_API_URL 
+                    ? process.env.REACT_APP_API_URL.replace('/api', '') 
+                    : `http://${window.location.hostname}:5000`;
+                  return imageUrl.startsWith('/') 
+                    ? `${baseUrl}${imageUrl}` 
+                    : `${baseUrl}/${imageUrl}`;
+                };
+                
+                const displayUrl = imagePreview || (formData.imageUrl ? getImageFullUrl(formData.imageUrl) : '');
+                
+                return displayUrl && displayUrl.trim() !== '' ? (
+                  <Box sx={{ mt: 1, textAlign: 'center' }}>
+                    <img
+                      src={displayUrl}
+                      alt="Preview"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '200px',
+                        objectFit: 'contain',
+                        borderRadius: '4px',
+                        border: '1px solid #ddd',
+                      }}
+                      onError={(e) => {
+                        console.error('Image preview load error:', displayUrl);
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                      onLoad={() => {
+                        if (process.env.NODE_ENV === 'development') {
+                          console.log('Image preview loaded successfully:', displayUrl);
+                        }
+                      }}
+                    />
+                  </Box>
+                ) : null;
+              })()}
+              {(!imagePreview && !formData.imageUrl) && (
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', fontStyle: 'italic' }}>
+                  Görsel yüklenmedi
+                </Typography>
+              )}
+            </Box>
 
             <FormControl fullWidth required size="small">
               <InputLabel>Bölüm</InputLabel>

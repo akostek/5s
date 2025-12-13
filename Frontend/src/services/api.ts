@@ -20,7 +20,8 @@ import {
   ResponseFormData,
   ActionFormData,
   Pagination,
-  ApiResponse
+  ApiResponse,
+  Announcement
 } from '../types';
 
 class ApiService {
@@ -42,7 +43,7 @@ class ApiService {
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
-        
+
         // If data is FormData, remove Content-Type header to let browser set it with boundary
         if (config.data instanceof FormData) {
           // Remove Content-Type header - browser will set it automatically with boundary
@@ -59,7 +60,7 @@ class ApiService {
             }
           }
         }
-        
+
         return config;
       },
       (error) => Promise.reject(error)
@@ -70,25 +71,31 @@ class ApiService {
       (response) => response,
       (error) => {
         // Check if error should be suppressed (for getUsers 403/401)
-        const shouldSuppress = error.config?._suppressError || 
-                               (error.response?.status === 403 && error.config?.url?.includes('/users')) ||
-                               (error.response?.status === 401 && error.config?.url?.includes('/users'));
-        
+        const shouldSuppress = error.config?._suppressError ||
+          (error.response?.status === 403 && error.config?.url?.includes('/users')) ||
+          (error.response?.status === 401 && error.config?.url?.includes('/users'));
+
         // Mark 403/401 errors as silent to prevent console logging
         if (error.response?.status === 403 || error.response?.status === 401) {
           error._silent = true;
         }
-        
-        // Only log non-403/401 errors and non-suppressed errors to avoid spam in console
-        if (!error._silent && !shouldSuppress) {
-          console.error('API Error:', error);
+
+        // Only log in development mode
+        if (process.env.NODE_ENV === 'development') {
+          // Only log non-403/401 errors and non-suppressed errors to avoid spam in console
+          if (!error._silent && !shouldSuppress) {
+            console.error('API Error:', error);
+          }
+
+          if (error.code === 'ECONNREFUSED' || error.code === 'NETWORK_ERROR') {
+            console.error('Network connection failed');
+          }
         }
-        
+
         if (error.code === 'ECONNREFUSED' || error.code === 'NETWORK_ERROR') {
-          console.error('Network connection failed');
           error.message = 'Network Error: Cannot connect to server';
         }
-        
+
         if (error.response?.status === 401 && !error._skipAuthRedirect) {
           // Token expired or invalid (but skip if marked to skip)
           localStorage.removeItem('token');
@@ -103,6 +110,11 @@ class ApiService {
   // Auth endpoints
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await this.api.post<LoginResponse>('/auth/login', credentials);
+    return response.data;
+  }
+
+  async loginWithKeycloak(code: string): Promise<LoginResponse> {
+    const response = await this.api.post<LoginResponse>('/auth/keycloak-login', { code });
     return response.data;
   }
 
@@ -221,10 +233,10 @@ class ApiService {
     return response.data;
   }
 
-  async getDepartment(id: number): Promise<{ 
-    department: Department; 
-    users: User[]; 
-    recent_audits: Audit[] 
+  async getDepartment(id: number): Promise<{
+    department: Department;
+    users: User[];
+    recent_audits: Audit[]
   }> {
     const response = await this.api.get(`/departments/${id}`);
     return response.data;
@@ -295,10 +307,10 @@ class ApiService {
     return response.data;
   }
 
-  async getAudit(id: number): Promise<{ 
-    audit: Audit; 
-    responses: any[]; 
-    actions: Action[] 
+  async getAudit(id: number): Promise<{
+    audit: Audit;
+    responses: any[];
+    actions: Action[]
   }> {
     const response = await this.api.get(`/audits/${id}`);
     return response.data;
@@ -395,12 +407,12 @@ class ApiService {
     return response.data;
   }
 
-  async getDepartmentProgress(id: number, months?: number): Promise<{ 
-    department: Department; 
-    progress: ProgressData[] 
+  async getDepartmentProgress(id: number, months?: number): Promise<{
+    department: Department;
+    progress: ProgressData[]
   }> {
-    const response = await this.api.get(`/reports/departments/${id}/progress`, { 
-      params: { months } 
+    const response = await this.api.get(`/reports/departments/${id}/progress`, {
+      params: { months }
     });
     return response.data;
   }
@@ -576,7 +588,7 @@ class ApiService {
   async uploadImage(file: File): Promise<{ fileName: string; imageUrl: string; message: string }> {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     // Don't set Content-Type header - let browser set it with boundary
     const response = await this.api.post<{ fileName: string; imageUrl: string; message: string }>(
       '/ImageUpload/upload',
@@ -590,7 +602,7 @@ class ApiService {
     files.forEach((file) => {
       formData.append('files', file);
     });
-    
+
     // Don't set Content-Type header - let browser set it with boundary
     const response = await this.api.post<{ fileNames: string[]; imageUrls: string[]; message: string }>(
       '/ImageUpload/upload-multiple',
@@ -627,6 +639,16 @@ class ApiService {
     return response.data;
   }
 
+  async changeActionStatus(id: number, status: string, comment?: string): Promise<any> {
+    const response = await this.api.post<any>(`/Actions/${id}/status`, { status, comment });
+    return response.data;
+  }
+
+  async getActionHistory(id: number): Promise<any[]> {
+    const response = await this.api.get<any[]>(`/Actions/${id}/history`);
+    return response.data;
+  }
+
   async updateAction(id: number, data: {
     description?: string;
     suggestedActivity?: string;
@@ -639,6 +661,43 @@ class ApiService {
     priority?: 'Düşük' | 'Orta' | 'Yüksek';
   }): Promise<any> {
     const response = await this.api.put<any>(`/Actions/${id}`, data);
+    return response.data;
+  }
+
+  // Announcements endpoints
+  async getAnnouncements(isActive?: boolean): Promise<Announcement[]> {
+    const params = isActive !== undefined ? { isActive } : {};
+    const response = await this.api.get<Announcement[]>('/Announcements', { params });
+    return response.data;
+  }
+
+  async getAnnouncement(id: number): Promise<Announcement> {
+    const response = await this.api.get<Announcement>(`/Announcements/${id}`);
+    return response.data;
+  }
+
+  async createAnnouncement(data: {
+    title: string;
+    content: string;
+    announcementDate: string;
+    isActive?: boolean;
+  }): Promise<Announcement> {
+    const response = await this.api.post<Announcement>('/Announcements', data);
+    return response.data;
+  }
+
+  async updateAnnouncement(id: number, data: {
+    title: string;
+    content: string;
+    announcementDate: string;
+    isActive?: boolean;
+  }): Promise<Announcement> {
+    const response = await this.api.put<Announcement>(`/Announcements/${id}`, data);
+    return response.data;
+  }
+
+  async deleteAnnouncement(id: number): Promise<ApiResponse> {
+    const response = await this.api.delete<ApiResponse>(`/Announcements/${id}`);
     return response.data;
   }
 

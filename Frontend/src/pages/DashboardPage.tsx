@@ -40,12 +40,13 @@ import {
   Map,
   Warning,
   Close,
+  ZoomIn,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { apiService } from '../services/api';
-import { Audit } from '../types';
+import { Audit, Announcement } from '../types';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -57,6 +58,7 @@ const DashboardPage: React.FC = () => {
   const [selectedArea, setSelectedArea] = useState<any>(null);
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [areaImageDialog, setAreaImageDialog] = useState<string | null>(null);
+  const [imageZoomOpen, setImageZoomOpen] = useState(false);
   
   const [sectors, setSectors] = useState<any[]>([]);
   const [directorates, setDirectorates] = useState<any[]>([]);
@@ -106,11 +108,34 @@ const DashboardPage: React.FC = () => {
   }>>([]);
   
   const [monthProgress, setMonthProgress] = useState({ current: 0, total: 0, percentage: 0 });
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   useEffect(() => {
     loadDashboardData();
     loadFilterData();
+    loadAnnouncements();
   }, []);
+
+  const loadAnnouncements = async () => {
+    try {
+      // Sadece aktif duyuruları çek (kullanıcı giriş yapmamış olabilir)
+      const data = await apiService.getAnnouncements(true);
+      // En yeni olanlar önce gelecek şekilde sırala (max 10)
+      const sorted = [...data].sort((a, b) => {
+        const dateA = new Date(a.announcementDate).getTime();
+        const dateB = new Date(b.announcementDate).getTime();
+        return dateB - dateA;
+      }).slice(0, 10);
+      setAnnouncements(sorted);
+    } catch (error: any) {
+      // Only log in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading announcements:', error);
+      }
+      // Hata durumunda boş array kullan
+      setAnnouncements([]);
+    }
+  };
 
   useEffect(() => {
     filterAreas();
@@ -127,7 +152,19 @@ const DashboardPage: React.FC = () => {
       setSectors(sectorsData);
       setDirectorates(directoratesData);
       setDepartments(departmentsData);
-      setAreas(areasData);
+      // Ensure areas have imageUrl property
+      const areasWithImage = areasData.map((area: any) => {
+        // Debug: Log area data
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Area from API:', area);
+          console.log('Area imageUrl:', area.imageUrl, area.ImageUrl, area.image_url);
+        }
+        return {
+          ...area,
+          imageUrl: area.imageUrl || area.ImageUrl || area.image_url || '',
+        };
+      });
+      setAreas(areasWithImage);
     } catch (error) {
       console.error('Error loading filter data:', error);
     }
@@ -406,11 +443,40 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleAreaClick = (area: any) => {
-    setSelectedArea(area);
+    // Get base URL for images (backend URL without /api)
+    const getImageFullUrl = (imageUrl: string) => {
+      if (!imageUrl || imageUrl.trim() === '') return '';
+      // If already a full URL (starts with http), return as is
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl;
+      }
+      // If starts with /, it's a relative path - add backend base URL
+      const baseUrl = process.env.REACT_APP_API_URL 
+        ? process.env.REACT_APP_API_URL.replace('/api', '') 
+        : `http://${window.location.hostname}:5000`;
+      return imageUrl.startsWith('/') 
+        ? `${baseUrl}${imageUrl}` 
+        : `${baseUrl}/${imageUrl}`;
+    };
+
+    // Ensure imageUrl is included in the area object with full URL
+    const rawImageUrl = area.imageUrl || area.ImageUrl || area.image_url || '';
+    const fullImageUrl = getImageFullUrl(rawImageUrl);
+    
+    const areaWithImage = {
+      ...area,
+      imageUrl: fullImageUrl,
+    };
+    
+    // Debug: Log area data
+    if (process.env.NODE_ENV === 'development') {
+      console.log('handleAreaClick - area:', area);
+      console.log('handleAreaClick - rawImageUrl:', rawImageUrl);
+      console.log('handleAreaClick - fullImageUrl:', fullImageUrl);
+      console.log('handleAreaClick - areaWithImage:', areaWithImage);
+    }
+    setSelectedArea(areaWithImage);
     setAreaDialogOpen(true);
-    // Show area image
-    const areaNumber = (area.id || area.Id) % 6 || 6;
-    setAreaImageDialog(`/uploads/images/alan${areaNumber}.jpg`);
   };
 
   const handleAuditClick = (auditId: number) => {
@@ -744,11 +810,11 @@ const DashboardPage: React.FC = () => {
       </Card>
 
       {/* Main Content */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'flex-start' }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'stretch' }}>
         {/* Son Denetimler - Table */}
-        <Box sx={{ flex: '2 1 600px', minWidth: 300 }}>
-          <Card>
-            <CardContent>
+        <Box sx={{ flex: '2 1 600px', minWidth: 300, display: 'flex', flexDirection: 'column' }}>
+          <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="h6" sx={{ fontSize: '0.875rem', fontWeight: 600 }}>
                   Son Denetimler
@@ -762,7 +828,7 @@ const DashboardPage: React.FC = () => {
                   Tümü
                 </Button>
               </Box>
-              <TableContainer>
+              <TableContainer sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -861,118 +927,94 @@ const DashboardPage: React.FC = () => {
         </Box>
 
         {/* Duyurular */}
-        <Box sx={{ flex: '1 1 300px', minWidth: 250, alignSelf: 'stretch' }}>
-          <Card>
-            <CardContent>
+        <Box sx={{ flex: '1 1 300px', minWidth: 250, display: 'flex', flexDirection: 'column' }}>
+          <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="h6" sx={{ fontSize: '0.875rem', fontWeight: 600 }}>
                   Duyurular
                 </Typography>
-                <Chip 
-                  label="Yeni" 
-                  size="small" 
-                  color="error"
-                  sx={{ fontSize: '0.625rem', height: '18px' }}
-                />
+                {announcements.some(a => new Date(a.announcementDate) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) && (
+                  <Chip 
+                    label="Yeni" 
+                    size="small" 
+                    color="error"
+                    sx={{ fontSize: '0.625rem', height: '18px' }}
+                  />
+                )}
               </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxHeight: '400px', overflowY: 'auto' }}>
-                {/* Örnek duyurular - Backend'den gelecek */}
-                <Box
-                  sx={{
-                    p: 1.5,
-                    border: '1px solid',
-                    borderColor: 'grey.200',
-                    borderRadius: '6px',
-                    bgcolor: 'grey.50',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      bgcolor: 'grey.100',
-                      borderColor: 'primary.main',
-                    },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
-                    <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem', bgcolor: 'primary.main' }}>
-                      !
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, mb: 0.5 }}>
-                        Sistem Güncellemesi
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.625rem', display: 'block', mb: 0.5 }}>
-                        Yeni özellikler ve iyileştirmeler eklendi. Detaylar için tıklayın.
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.625rem' }}>
-                        {format(new Date(), 'd MMMM yyyy', { locale: tr })}
-                      </Typography>
-                    </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                {announcements.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      Henüz duyuru bulunmamaktadır.
+                    </Typography>
                   </Box>
-                </Box>
-                
-                <Box
-                  sx={{
-                    p: 1.5,
-                    border: '1px solid',
-                    borderColor: 'grey.200',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      bgcolor: 'grey.50',
-                      borderColor: 'primary.main',
-                    },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
-                    <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem', bgcolor: 'success.main' }}>
-                      ✓
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, mb: 0.5 }}>
-                        Denetim Süreci Güncellendi
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.625rem', display: 'block', mb: 0.5 }}>
-                        Denetim formları ve raporlama özellikleri geliştirildi.
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.625rem' }}>
-                        {format(new Date(Date.now() - 86400000), 'd MMMM yyyy', { locale: tr })}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-
-                <Box
-                  sx={{
-                    p: 1.5,
-                    border: '1px solid',
-                    borderColor: 'grey.200',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      bgcolor: 'grey.50',
-                      borderColor: 'primary.main',
-                    },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
-                    <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem', bgcolor: 'info.main' }}>
-                      i
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, mb: 0.5 }}>
-                        Eğitim Duyurusu
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.625rem', display: 'block', mb: 0.5 }}>
-                        5S metodolojisi eğitim programı başlıyor. Katılım için kayıt olun.
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.625rem' }}>
-                        {format(new Date(Date.now() - 172800000), 'd MMMM yyyy', { locale: tr })}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
+                ) : (
+                  announcements.map((announcement) => {
+                    const announcementDate = new Date(announcement.announcementDate);
+                    const isNew = announcementDate >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Son 7 gün
+                    
+                    return (
+                      <Box
+                        key={announcement.id}
+                        sx={{
+                          p: 1.5,
+                          border: '1px solid',
+                          borderColor: isNew ? 'primary.main' : 'grey.200',
+                          borderRadius: '6px',
+                          bgcolor: isNew ? 'primary.50' : 'transparent',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            bgcolor: isNew ? 'primary.100' : 'grey.50',
+                            borderColor: 'primary.main',
+                          },
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
+                          <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem', bgcolor: isNew ? 'error.main' : 'primary.main' }}>
+                            {isNew ? '!' : 'i'}
+                          </Avatar>
+                          <Box sx={{ flex: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                              <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                                {announcement.title}
+                              </Typography>
+                              {isNew && (
+                                <Chip 
+                                  label="Yeni" 
+                                  size="small" 
+                                  color="error"
+                                  sx={{ fontSize: '0.5rem', height: '14px', ml: 'auto' }}
+                                />
+                              )}
+                            </Box>
+                            <Typography 
+                              variant="caption" 
+                              color="text.secondary" 
+                              sx={{ 
+                                fontSize: '0.625rem', 
+                                mb: 0.5,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {announcement.content}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.625rem' }}>
+                              {format(announcementDate, 'd MMMM yyyy', { locale: tr })}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                    );
+                  })
+                )}
               </Box>
             </CardContent>
           </Card>
@@ -1158,11 +1200,16 @@ const DashboardPage: React.FC = () => {
       </Card>
 
       {/* Area Detail Dialog */}
-      <Dialog open={areaDialogOpen} onClose={() => setAreaDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={areaDialogOpen} onClose={() => setAreaDialogOpen(false)} maxWidth="lg" fullWidth>
         <DialogTitle>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6">
               {selectedArea?.name || selectedArea?.Name || 'Alan Detayları'}
+              {selectedArea && (
+                <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1, fontWeight: 'normal' }}>
+                  ({selectedArea.departmentName || selectedArea.department_name || selectedArea.DepartmentName || '-'})
+                </Typography>
+              )}
             </Typography>
             <IconButton size="small" onClick={() => setAreaDialogOpen(false)}>
               <Close />
@@ -1170,158 +1217,207 @@ const DashboardPage: React.FC = () => {
           </Box>
         </DialogTitle>
         <DialogContent>
-          {areaImageDialog && (
-            <Box sx={{ mb: 3, borderRadius: 2, overflow: 'hidden', boxShadow: 2 }}>
-              <img 
-                src={areaImageDialog} 
-                alt={selectedArea?.name || selectedArea?.Name || 'Alan Görseli'} 
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            </Box>
-          )}
           {selectedArea && (() => {
             const stats = getAreaStats(selectedArea.id || selectedArea.Id);
             const areaAudits = audits.filter(a => (a.area_id) === (selectedArea.id || selectedArea.Id));
+            const areaImageUrl = selectedArea.imageUrl || selectedArea.ImageUrl || selectedArea.image_url || '';
+            
             return (
-              <Box>
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Bölüm: {selectedArea.departmentName || selectedArea.department_name || selectedArea.DepartmentName || '-'}
-                  </Typography>
-                  {selectedArea.supervisor || selectedArea.Supervisor || selectedArea.area_supervisor && (
-                    <Typography variant="body2" color="text.secondary">
-                      Sorumlu: {selectedArea.supervisor || selectedArea.Supervisor || selectedArea.area_supervisor}
-                    </Typography>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, mt: 0, alignItems: 'flex-start' }}>
+                {/* Sol Taraf - Görsel */}
+                <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 33.333%' }, maxWidth: { xs: '100%', md: '33.333%' } }}>
+                  {areaImageUrl && areaImageUrl.trim() !== '' ? (
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        boxShadow: 3,
+                        cursor: 'pointer',
+                        height: '100%',
+                        minHeight: '400px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        '&:hover .zoom-overlay': {
+                          opacity: 1,
+                        },
+                      }}
+                      onClick={() => setImageZoomOpen(true)}
+                    >
+                      <img
+                        src={areaImageUrl}
+                        alt={selectedArea.name || selectedArea.Name || selectedArea.alanAdi || 'Alan Görseli'}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                        }}
+                        onError={(e) => {
+                          console.error('Image load error for URL:', areaImageUrl);
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      <Box
+                        className="zoom-overlay"
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          bgcolor: 'rgba(0, 0, 0, 0.5)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          opacity: 0,
+                          transition: 'opacity 0.3s',
+                        }}
+                      >
+                        <ZoomIn sx={{ color: 'white', fontSize: 48 }} />
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Box sx={{ p: 3, bgcolor: 'grey.100', borderRadius: 2, textAlign: 'center', minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Görsel yüklenmedi
+                      </Typography>
+                    </Box>
                   )}
                 </Box>
-                
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-                  <Box sx={{ flex: '1 1 200px', minWidth: 150 }}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                          Ortalama Puan
-                        </Typography>
-                        <Typography variant="h5" sx={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                          %{stats.avgScore}
-                        </Typography>
-                        <Chip
-                          label={stats.level}
-                          size="small"
-                          sx={{
-                            mt: 1,
-                            bgcolor: getLevelColor(stats.level) + '20',
-                            color: getLevelColor(stats.level),
-                          }}
-                        />
-                      </CardContent>
-                    </Card>
-                  </Box>
-                  <Box sx={{ flex: '1 1 200px', minWidth: 150 }}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                          Toplam Denetim
-                        </Typography>
-                        <Typography variant="h5" sx={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                          {stats.totalAudits}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Box>
-                  <Box sx={{ flex: '1 1 200px', minWidth: 150 }}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                          Açık Aksiyonlar
-                        </Typography>
-                        <Typography variant="h5" sx={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>
-                          {stats.openActions}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Box>
-                  <Box sx={{ flex: '1 1 200px', minWidth: 150 }}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                          Toplam Aksiyonlar
-                        </Typography>
-                        <Typography variant="h5" sx={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                          {stats.totalActions}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Box>
-                </Box>
-                
-                <Typography variant="h6" sx={{ fontSize: '0.875rem', fontWeight: 600, mb: 2 }}>
-                  Denetimler
-                </Typography>
-                {areaAudits.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                    Bu alan için henüz denetim bulunmamaktadır.
-                  </Typography>
-                ) : (
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Tarih</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Puan</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Seviye</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Durum</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {areaAudits.slice(0, 5).map((audit) => (
-                          <TableRow
-                            key={audit.id}
-                            onClick={() => {
-                              handleAuditClick(audit.id);
-                              setAreaDialogOpen(false);
+
+                {/* Sağ Taraf - İstatistikler ve Denetimler */}
+                <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 66.666%' }, maxWidth: { xs: '100%', md: '66.666%' } }}>
+                  {/* Bilgi Kartları */}
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3, alignItems: 'stretch' }}>
+                    <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: '1 1 calc(33.333% - 11px)' }, minWidth: { xs: 'calc(50% - 8px)', sm: 'calc(33.333% - 11px)' } }}>
+                      <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <CardContent sx={{ textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.5 }}>
+                            Ortalama Puan
+                          </Typography>
+                          <Typography variant="h5" sx={{ fontSize: '1.5rem', fontWeight: 700, mb: 0.5 }}>
+                            %{stats.avgScore}
+                          </Typography>
+                          <Chip
+                            label={stats.level}
+                            size="small"
+                            sx={{
+                              fontSize: '0.65rem',
+                              height: '20px',
+                              bgcolor: getLevelColor(stats.level) + '20',
+                              color: getLevelColor(stats.level),
                             }}
-                            sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'grey.50' } }}
-                          >
-                            <TableCell sx={{ fontSize: '0.75rem' }}>
-                              {audit.audit_date ? format(new Date(audit.audit_date), 'd MMMM yyyy', { locale: tr }) : '-'}
-                            </TableCell>
-                            <TableCell sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
-                              %{audit.max_possible_score > 0 ? Math.round((audit.total_score / audit.max_possible_score) * 100) : 0}
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={audit.level_achieved || 'Başlangıç'}
-                                size="small"
-                                sx={{
-                                  fontSize: '0.625rem',
-                                  height: '18px',
-                                  bgcolor: getLevelColor(audit.level_achieved || 'Başlangıç') + '20',
-                                  color: getLevelColor(audit.level_achieved || 'Başlangıç'),
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={audit.status === 'tamamlandı' || audit.status === 'published' ? 'Tamamlandı' : 'Devam Ediyor'}
-                                size="small"
-                                sx={{
-                                  fontSize: '0.625rem',
-                                  height: '18px',
-                                  bgcolor: (audit.status === 'tamamlandı' || audit.status === 'published') ? '#10b98120' : '#f59e0b20',
-                                  color: (audit.status === 'tamamlandı' || audit.status === 'published') ? '#10b981' : '#f59e0b',
-                                }}
-                              />
-                            </TableCell>
+                          />
+                        </CardContent>
+                      </Card>
+                    </Box>
+                    <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: '1 1 calc(33.333% - 11px)' }, minWidth: { xs: 'calc(50% - 8px)', sm: 'calc(33.333% - 11px)' } }}>
+                      <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <CardContent sx={{ textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.5 }}>
+                            Toplam Denetim
+                          </Typography>
+                          <Typography variant="h5" sx={{ fontSize: '1.5rem', fontWeight: 700 }}>
+                            {stats.totalAudits}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Box>
+                    <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(33.333% - 11px)' }, minWidth: { xs: '100%', sm: 'calc(33.333% - 11px)' } }}>
+                      <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 1 }}>
+                            Aksiyonlar
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+                            <Typography variant="h5" sx={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>
+                              {stats.openActions}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                              Açık
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                              /
+                            </Typography>
+                            <Typography variant="h5" sx={{ fontSize: '1.5rem', fontWeight: 700 }}>
+                              {stats.totalActions}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                              Toplam
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Box>
+                  </Box>
+                  
+                  {/* Denetimler Tablosu */}
+                  <Typography variant="h6" sx={{ fontSize: '0.875rem', fontWeight: 600, mb: 2 }}>
+                    Denetimler
+                  </Typography>
+                  {areaAudits.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                      Bu alan için henüz denetim bulunmamaktadır.
+                    </Typography>
+                  ) : (
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Tarih</TableCell>
+                            <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Puan</TableCell>
+                            <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Seviye</TableCell>
+                            <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Durum</TableCell>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
+                        </TableHead>
+                        <TableBody>
+                          {areaAudits.slice(0, 5).map((audit) => (
+                            <TableRow
+                              key={audit.id}
+                              onClick={() => {
+                                handleAuditClick(audit.id);
+                                setAreaDialogOpen(false);
+                              }}
+                              sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'grey.50' } }}
+                            >
+                              <TableCell sx={{ fontSize: '0.75rem' }}>
+                                {audit.audit_date ? format(new Date(audit.audit_date), 'd MMMM yyyy', { locale: tr }) : '-'}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                                %{audit.max_possible_score > 0 ? Math.round((audit.total_score / audit.max_possible_score) * 100) : 0}
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={audit.level_achieved || 'Başlangıç'}
+                                  size="small"
+                                  sx={{
+                                    fontSize: '0.625rem',
+                                    height: '18px',
+                                    bgcolor: getLevelColor(audit.level_achieved || 'Başlangıç') + '20',
+                                    color: getLevelColor(audit.level_achieved || 'Başlangıç'),
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={audit.status === 'tamamlandı' || audit.status === 'published' ? 'Tamamlandı' : 'Devam Ediyor'}
+                                  size="small"
+                                  sx={{
+                                    fontSize: '0.625rem',
+                                    height: '18px',
+                                    bgcolor: (audit.status === 'tamamlandı' || audit.status === 'published') ? '#10b98120' : '#f59e0b20',
+                                    color: (audit.status === 'tamamlandı' || audit.status === 'published') ? '#10b981' : '#f59e0b',
+                                  }}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </Box>
               </Box>
             );
           })()}
@@ -1340,6 +1436,59 @@ const DashboardPage: React.FC = () => {
             </Button>
           )}
         </DialogActions>
+      </Dialog>
+
+      {/* Image Zoom Dialog */}
+      <Dialog 
+        open={imageZoomOpen} 
+        onClose={() => setImageZoomOpen(false)} 
+        maxWidth="lg" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: 'rgba(0, 0, 0, 0.9)',
+            boxShadow: 'none',
+          }
+        }}
+      >
+        <DialogContent sx={{ p: 0, position: 'relative' }}>
+          <IconButton
+            onClick={() => setImageZoomOpen(false)}
+            sx={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              color: 'white',
+              bgcolor: 'rgba(0, 0, 0, 0.5)',
+              '&:hover': {
+                bgcolor: 'rgba(0, 0, 0, 0.7)',
+              },
+              zIndex: 1,
+            }}
+          >
+            <Close />
+          </IconButton>
+          {selectedArea && (() => {
+            const areaImageUrl = selectedArea.imageUrl || selectedArea.ImageUrl || selectedArea.image_url || '';
+            return areaImageUrl && areaImageUrl.trim() !== '' ? (
+              <img
+                src={areaImageUrl}
+                alt={selectedArea.name || selectedArea.Name || selectedArea.alanAdi || 'Alan Görseli'}
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block',
+                  maxHeight: '90vh',
+                  objectFit: 'contain',
+                }}
+                onError={(e) => {
+                  console.error('Image load error for URL:', areaImageUrl);
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            ) : null;
+          })()}
+        </DialogContent>
       </Dialog>
     </Container>
   );

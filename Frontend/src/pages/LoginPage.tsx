@@ -1,39 +1,16 @@
-import React, { useState } from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  CircularProgress,
-} from '@mui/material';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Box, Button, Card, CardContent, Typography } from '@mui/material';
+import { KEYCLOAK_CONFIG } from '../config';
 
 const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('admin@5s.com');
-  const [password, setPassword] = useState('Admin123!');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  const handleSSOLogin = () => {
+    window.location.href = `${KEYCLOAK_CONFIG.url}?client_id=${KEYCLOAK_CONFIG.clientId}&response_type=code&scope=openid profile email&redirect_uri=${encodeURIComponent(KEYCLOAK_CONFIG.redirectUri)}`;
+  };
 
-    try {
-      await login({ email, password });
-      navigate('/dashboard');
-    } catch (err: any) {
-      console.error('Login error:', err);
-      setError(err.response?.data?.message || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
-    } finally {
-      setLoading(false);
-    }
+  const handleOfflineLogin = () => {
+    // Redirect to callback with mock code
+    window.location.href = '/callback?code=mock_dev_code';
   };
 
   return (
@@ -47,56 +24,45 @@ const LoginPage: React.FC = () => {
       }}
     >
       <Card sx={{ maxWidth: 400, width: '100%', mx: 2 }}>
-        <CardContent sx={{ p: 4 }}>
-          <Typography variant="h4" sx={{ mb: 1, fontWeight: 700, textAlign: 'center', color: '#6366f1' }}>
-            5S Denetim Platformu
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 3, textAlign: 'center', color: '#6b7280' }}>
-            Giriş Yapın
-          </Typography>
+        <CardContent sx={{ p: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h4" sx={{ mb: 1, fontWeight: 700, color: '#6366f1' }}>
+              5S Denetim Platformu
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Lütfen giriş yöntemini seçiniz
+            </Typography>
+          </Box>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
+          <Button
+            fullWidth
+            variant="contained"
+            size="large"
+            onClick={handleSSOLogin}
+            sx={{
+              bgcolor: '#6366f1',
+              '&:hover': { bgcolor: '#4f46e5' }
+            }}
+          >
+            SSO ile Giriş Yap (Şirket Ağı)
+          </Button>
+
+          {/* Offline Login Button for Development */}
+          {process.env.NODE_ENV === 'development' && (
+            <Box sx={{ pt: 2, borderTop: '1px solid #e5e7eb', textAlign: 'center' }}>
+              <Typography variant="caption" display="block" sx={{ mb: 2, color: 'text.secondary' }}>
+                Geliştirme Ortamı / Şirket Dışı Erişim
+              </Typography>
+              <Button
+                fullWidth
+                variant="outlined"
+                color="warning"
+                onClick={handleOfflineLogin}
+              >
+                Offline / Test Girişi Yap
+              </Button>
+            </Box>
           )}
-
-          <form onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="E-posta"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
-              required
-              disabled={loading}
-            />
-            <TextField
-              fullWidth
-              label="Şifre"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
-              required
-              disabled={loading}
-            />
-            <Button
-              fullWidth
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={loading}
-              sx={{ mt: 3 }}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Giriş Yap'}
-            </Button>
-          </form>
-
-          <Typography variant="caption" sx={{ mt: 2, display: 'block', textAlign: 'center', color: '#6b7280' }}>
-            Varsayılan: admin@5s.com / Admin123!
-          </Typography>
         </CardContent>
       </Card>
     </Box>
