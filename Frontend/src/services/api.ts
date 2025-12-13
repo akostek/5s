@@ -338,6 +338,11 @@ class ApiService {
     return response.data;
   }
 
+  async revertPublish(auditId: number): Promise<{ message: string }> {
+    const response = await this.api.post<{ message: string }>(`/audits/${auditId}/revert`);
+    return response.data;
+  }
+
   async getAllActions(): Promise<Action[]> {
     const response = await this.api.get<Action[]>('/Actions');
     return response.data;

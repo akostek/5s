@@ -41,7 +41,7 @@ namespace Application.Services
                     .ToListAsync();
 
                 var totalActions = auditActions.Count;
-                var openActions = auditActions.Count(act => act.Status == ActionStatus.Open);
+                var openActions = auditActions.Count(act => act.Status != ActionStatus.Closed);
                 var closedActions = auditActions.Count(act => act.Status == ActionStatus.Closed);
 
                 return new AuditDto
@@ -116,7 +116,7 @@ namespace Application.Services
                     // Bu denetim için aksiyonları getir
                     var auditActions = allActions.Where(act => act.AuditId == a.Id).ToList();
                     var totalActions = auditActions.Count;
-                    var openActions = auditActions.Count(act => act.Status == ActionStatus.Open);
+                    var openActions = auditActions.Count(act => act.Status != ActionStatus.Closed);
                     var closedActions = auditActions.Count(act => act.Status == ActionStatus.Closed);
 
                     return new AuditDto
@@ -158,7 +158,13 @@ namespace Application.Services
             try
             {
                 var audit = await _unitOfWork.Repository<Audit>()
-                    .GetByIdAsync(auditId);
+                    .GetQueryable()
+                    .Include(a => a.Sector)
+                    .Include(a => a.Directorate)
+                    .Include(a => a.Department)
+                    .Include(a => a.Area)
+                    .FirstOrDefaultAsync(a => a.Id == auditId);
+
                 if (audit == null)
                 {
                     throw new Exception($"Audit with ID {auditId} not found");
@@ -170,14 +176,25 @@ namespace Application.Services
                     .Where(r => r.AuditId == auditId)
                     .CountAsync();
 
+                // Get question count relevant to this audit (filter by sector, directorate, etc.)
+                var sectorName = audit.Sector?.Name;
+                var directorateName = audit.Directorate?.Name;
+                var departmentName = audit.Department?.Name;
+                var areaName = audit.Area?.Name;
+
                 var totalQuestions = await _unitOfWork.Repository<Question>()
                     .GetQueryable()
-                    .Where(q => q.IsActive)
+                    .Where(q => q.IsActive &&
+                        (string.IsNullOrEmpty(sectorName) || string.IsNullOrEmpty(q.Sector) || q.Sector == sectorName) &&
+                        (string.IsNullOrEmpty(directorateName) || string.IsNullOrEmpty(q.Directorate) || q.Directorate == directorateName) &&
+                        (string.IsNullOrEmpty(departmentName) || string.IsNullOrEmpty(q.Department) || q.Department == departmentName) &&
+                        (string.IsNullOrEmpty(areaName) || string.IsNullOrEmpty(q.Area) || q.Area == areaName)
+                    )
                     .CountAsync();
 
                 if (responses < totalQuestions)
                 {
-                    throw new Exception("Tüm sorular cevaplanmadan denetim yayınlanamaz.");
+                    throw new Exception($"Tüm sorular cevaplanmadan denetim yayınlanamaz. (Cevaplanan: {responses}/{totalQuestions})");
                 }
 
                 audit.Status = "denetlendi";
@@ -190,6 +207,35 @@ namespace Application.Services
             catch (Exception ex)
             {
                 throw new Exception($"Error publishing audit: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<bool> RevertPublishAsync(int auditId)
+        {
+            try
+            {
+                var audit = await _unitOfWork.Repository<Audit>()
+                    .GetByIdAsync(auditId);
+                if (audit == null)
+                {
+                    throw new Exception($"Audit with ID {auditId} not found");
+                }
+
+                if (audit.Status != "denetlendi")
+                {
+                    throw new Exception("Sadece yayınlanmış denetimler geri alınabilir.");
+                }
+
+                audit.Status = "devam"; // Revert to In Progress
+                audit.UpdatedAt = DateTime.UtcNow;
+                await _unitOfWork.Repository<Audit>().UpdateAsync(audit);
+                await _unitOfWork.SaveChangesAsync();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error reverting audit: {ex.Message}", ex);
             }
         }
 

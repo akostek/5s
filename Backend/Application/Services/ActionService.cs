@@ -335,7 +335,7 @@ namespace Application.Services
             var fullAction = await actionsRepo.GetQueryable()
                 .Include(a => a.ResponsiblePerson)
                 .Include(a => a.Audit)
-                    .ThenInclude(au => au.Auditor)
+                    .ThenInclude(au => au!.Auditor)
                 .FirstOrDefaultAsync(a => a.Id == id);
             
             if (fullAction != null)

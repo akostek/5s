@@ -13,10 +13,15 @@ export interface User {
   RoleId?: number; // PascalCase from backend
   sector?: string; // Sektör (örn: UGES)
   Sector?: string; // PascalCase from backend
+  sectorId?: number;
+  SectorId?: number;
   directorate?: string; // Direktörlük (örn: Üretim Direktörlüğü)
   Directorate?: string; // PascalCase from backend
+  directorateId?: number;
+  DirectorateId?: number;
   department_id?: number;
   departmentId?: number; // PascalCase from backend
+  DepartmentId?: number; // PascalCase from backend
   department_name?: string;
   DepartmentName?: string; // PascalCase from backend
   is_active: boolean;
@@ -110,6 +115,8 @@ export interface Audit {
   closed_actions?: number;
   created_at: string;
   updated_at?: string;
+  sector_name?: string;
+  directorate_name?: string;
 }
 
 // Audit Response types

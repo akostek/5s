@@ -164,7 +164,37 @@ namespace Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Denetim yayınlanırken bir hata oluştu.", error = ex.Message });
+                var innerException = ex.InnerException != null ? ex.InnerException.Message : "None";
+                return StatusCode(500, new { 
+                    message = "Denetim yayınlanırken bir hata oluştu.", 
+                    error = ex.Message,
+                    innerException = innerException,
+                    stackTrace = ex.StackTrace 
+                });
+            }
+        }
+
+        [HttpPost("{id}/revert")]
+        public async Task<IActionResult> RevertPublish(int id)
+        {
+            try
+            {
+                var result = await _auditService.RevertPublishAsync(id);
+                if (result)
+                {
+                    return Ok(new { message = "Denetim yayını başarıyla geri alındı." });
+                }
+                return BadRequest(new { message = "Denetim yayını geri alınamadı." });
+            }
+            catch (Exception ex)
+            {
+                var innerException = ex.InnerException != null ? ex.InnerException.Message : "None";
+                return StatusCode(500, new { 
+                    message = "Denetim yayını geri alınırken bir hata oluştu.", 
+                    error = ex.Message,
+                    innerException = innerException,
+                    stackTrace = ex.StackTrace 
+                });
             }
         }
     }

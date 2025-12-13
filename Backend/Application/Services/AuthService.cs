@@ -151,7 +151,7 @@ namespace Application.Services
                     return new LoginResponseDto
                     {
                         Token = mockToken,
-                        User = MapToUserDto(mockUser)
+                        User = mockUser != null ? MapToUserDto(mockUser) : new UserDto()
                     };
                 }
 
@@ -442,7 +442,7 @@ namespace Application.Services
                 return new LoginResponseDto
                 {
                     Token = appToken,
-                    User = MapToUserDto(user)
+                    User = user != null ? MapToUserDto(user) : new UserDto()
                 };
             }
             catch (Exception ex)
