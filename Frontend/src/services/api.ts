@@ -522,6 +522,10 @@ class ApiService {
     await this.api.delete(`/areas/${id}`);
   }
 
+  async getActiveUsers(): Promise<User[]> {
+    const response = await this.api.get<User[]>('/users/active');
+    return response.data;
+  }
 
   // Sectors endpoints
   async getSectors(): Promise<any[]> {
@@ -640,7 +644,15 @@ class ApiService {
   }
 
   async changeActionStatus(id: number, status: string, comment?: string): Promise<any> {
-    const response = await this.api.post<any>(`/Actions/${id}/status`, { status, comment });
+    let statusInt = 0;
+    switch (status) {
+      case 'open': statusInt = 0; break;
+      case 'in_progress': statusInt = 1; break;
+      case 'pending_approval': statusInt = 2; break;
+      case 'closed': statusInt = 3; break;
+      default: statusInt = 0;
+    }
+    const response = await this.api.post<any>(`/Actions/${id}/status`, { status: statusInt, comment });
     return response.data;
   }
 

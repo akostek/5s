@@ -21,7 +21,6 @@ namespace Domain.Entities
         public string? ResponsiblePerson { get; set; }
         public ActionStatus Status { get; set; } = ActionStatus.Open;
         public string? Priority { get; set; } // Düşük, Orta, Yüksek
-
         // Navigation properties
         public virtual Audit? Audit { get; set; }
         public virtual Question Question { get; set; } = null!;

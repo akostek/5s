@@ -53,6 +53,7 @@ namespace Infrastructure.Data
             modelBuilder.ApplyConfiguration(new LevelThresholdEntityConfiguration());
             modelBuilder.ApplyConfiguration(new SettingEntityConfiguration());
             modelBuilder.ApplyConfiguration(new PermissionEntityConfiguration());
+            modelBuilder.ApplyConfiguration(new ActionHistoryEntityConfiguration());
             modelBuilder.ApplyConfiguration(new AnnouncementEntityConfiguration());
 
             // Seed default data

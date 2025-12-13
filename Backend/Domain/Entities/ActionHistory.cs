@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Domain.Entities
 {
+    [Table("AksiyonGecmisi")]
     public class ActionHistory : BaseEntity
     {
         public int ActionId { get; set; }

@@ -67,7 +67,7 @@ const NewAuditPage: React.FC = () => {
         setLoading(true);
         const [allQuestions, allUsers, audits, existingResponses, existingActions] = await Promise.all([
           apiService.getQuestions(undefined, true, auditId), // Pass auditId to filter questions
-          apiService.getUsers(),
+          apiService.getActiveUsers(),
           apiService.getAudits(),
           apiService.getAuditResponsesByAuditId(auditId).catch(() => []),
           apiService.getActionsByAuditId(auditId).catch(() => []),

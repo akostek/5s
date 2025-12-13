@@ -76,6 +76,34 @@ namespace Api.Controllers
         }
 
         /// <summary>
+        /// Get active users list for dropdowns - minimal permission required
+        /// </summary>
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveUsers()
+        {
+            try
+            {
+                // Allow any authenticated user to get the list of active users for dropdowns
+                var users = await _userService.GetAllUsersAsync(null, null);
+                // Filter only active users and map to simple object
+                var activeUsers = users.Where(u => u.IsActive != false).Select(u => new 
+                { 
+                    u.Id, 
+                    u.Name, 
+                    u.DepartmentId, 
+                    u.DepartmentName,
+                    u.RoleId,
+                    u.Role
+                });
+                return Ok(activeUsers);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Get user by ID - permission checked via yetkiler table
         /// </summary>
         [HttpGet("{id}")]

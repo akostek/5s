@@ -512,7 +512,7 @@ const AuditsPage: React.FC = () => {
           apiService.getSectors(),
           apiService.getDirectorates(),
           apiService.getAreas(),
-          apiService.getUsers(), // getUsers() now handles 403/401 silently internally
+          apiService.getActiveUsers(), // getUsers() now handles 403/401 silently internally
           apiService.getQuestions(),
         ]);
 
@@ -2102,7 +2102,8 @@ const AuditsPage: React.FC = () => {
 
                                 {/* Workflow Buttons */}
                                 {/* Area Responsible: Send to Auditor */}
-                                {action.status === 'open' && (
+                                {/* Show if: Status is Open AND (User is Admin OR User is Responsible Person) */}
+                                {action.status === 'open' && (user?.role?.includes('admin') || user?.name === action.responsible_person) && (
                                   <Button
                                     size="small"
                                     variant="contained"
@@ -2115,7 +2116,8 @@ const AuditsPage: React.FC = () => {
                                 )}
 
                                 {/* Auditor: Complete or Return */}
-                                {action.status === 'pending_approval' && (
+                                {/* Show if: Status is Pending Approval AND (User is Admin OR User is assigned Auditor) */}
+                                {action.status === 'pending_approval' && (user?.role?.includes('admin') || (selectedAudit && user?.id === selectedAudit.auditor_id)) && (
                                   <>
                                     <Button
                                       size="small"
