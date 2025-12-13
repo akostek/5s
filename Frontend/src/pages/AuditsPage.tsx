@@ -910,29 +910,7 @@ const AuditsPage: React.FC = () => {
     console.log('Excel export triggered');
   };
 
-  const getActionStatusLabel = (status: NormalizedActionStatus) => {
-    switch (status) {
-      case 'closed':
-        return 'Tamamlandı';
-      case 'in_progress':
-        return 'Devam Ediyor';
-      default:
-        return 'Açık';
-    }
-  };
 
-  const getActionStatusChipColor = (
-    status: NormalizedActionStatus
-  ): 'default' | 'info' | 'success' | 'warning' | 'error' => {
-    switch (status) {
-      case 'closed':
-        return 'success';
-      case 'in_progress':
-        return 'warning';
-      default:
-        return 'error';
-    }
-  };
 
   const handleActionsClick = (audit: Audit) => {
     setSelectedAudit(audit);
