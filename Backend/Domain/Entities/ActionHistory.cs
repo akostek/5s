@@ -10,9 +10,12 @@ namespace Domain.Entities
         public int ActionId { get; set; }
         public ActionStatus StatusFrom { get; set; }
         public ActionStatus StatusTo { get; set; }
-        public string? ChangedBy { get; set; } // Username or User ID
+        public int PerformedById { get; set; } // User ID
         public string? Comment { get; set; }
         public string? EvidenceImagePath { get; set; } // Kanıt görseli
+        
+        [ForeignKey("PerformedById")]
+        public virtual User PerformedByUser { get; set; } = null!;
         
         [ForeignKey("ActionId")]
         public virtual Action Action { get; set; } = null!;

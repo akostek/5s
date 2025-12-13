@@ -17,7 +17,12 @@ namespace Application.DTOs
         public string? SuggestedActivity { get; set; }
         public string? PlannedActivity { get; set; }
         public DateTime? TargetDate { get; set; }
-        public string? ResponsiblePerson { get; set; }
+        public int? ResponsiblePersonId { get; set; }
+        public string? ResponsiblePersonName { get; set; } // For display
+        public string? ResponsiblePerson { get; set; } // Deprecated, keep for backward compat if needed, or map Name here? I'll keep Name mapped here for frontend compatibility if frontend expects "ResponsiblePerson" to be the name.
+        // Actually, frontend uses "ResponsiblePerson" for display. So I should map the User.Name to this property.
+        // But for Input (Create/Update), I need ID.
+        // Let's explicitly add ResponsiblePersonId and Name.
         public ActionStatus Status { get; set; }
         public string? StatusText { get; set; } // Turkish status label from database
         public string? Priority { get; set; }

@@ -17,10 +17,11 @@ namespace Domain.Entities
         public string? SuggestedActivity { get; set; }
         public string? PlannedActivity { get; set; }
         public DateTime? TargetDate { get; set; }
-        public string? ResponsiblePerson { get; set; }
+        public int? ResponsiblePersonId { get; set; }
         public ActionStatus Status { get; set; } = ActionStatus.Open;
         public string? Priority { get; set; } // Düşük, Orta, Yüksek
         // Navigation properties
+        public virtual User? ResponsiblePerson { get; set; }
         public virtual Audit? Audit { get; set; }
         public virtual Question Question { get; set; } = null!;
         public virtual Department? Department { get; set; }

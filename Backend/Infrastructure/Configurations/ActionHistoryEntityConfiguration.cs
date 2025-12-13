@@ -53,13 +53,19 @@ namespace Infrastructure.Configurations
                          Enum.Parse<Domain.Enums.ActionStatus>(v))
                 .HasMaxLength(50)
                 .HasColumnName("YeniDurum");
-            builder.Property(e => e.ChangedBy).HasMaxLength(200).HasColumnName("Degistiren");
+            builder.Property(e => e.PerformedById).HasColumnName("kullanici_id");
             builder.Property(e => e.Comment).HasMaxLength(2000).HasColumnName("Aciklama");
             builder.Property(e => e.EvidenceImagePath).HasMaxLength(500).HasColumnName("KanitGorselYolu");
             builder.Property(e => e.CreatedAt).HasColumnName("OlusturmaTarihi");
             builder.Property(e => e.UpdatedAt).HasColumnName("GuncellemeTarihi");
 
             // Relationships
+            builder.HasOne(e => e.PerformedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.PerformedById)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_AksiyonGecmisi_Kullanicilar");
+
             builder.HasOne(e => e.Action)
                 .WithMany(a => a.History)
                 .HasForeignKey(e => e.ActionId)

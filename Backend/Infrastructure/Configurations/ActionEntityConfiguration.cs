@@ -28,7 +28,7 @@ namespace Infrastructure.Configurations
             builder.Property(e => e.SuggestedActivity).HasMaxLength(1000).HasColumnName("OnerilenFaaliyet");
             builder.Property(e => e.PlannedActivity).HasMaxLength(1000).HasColumnName("PlanlananFaaliyet");
             builder.Property(e => e.TargetDate).HasColumnName("HedefTarih");
-            builder.Property(e => e.ResponsiblePerson).HasMaxLength(200).HasColumnName("Sorumlu");
+            builder.Property(e => e.ResponsiblePersonId).HasColumnName("alansorumlusu_id");
             builder.Property(e => e.Status)
                 .HasConversion<string>()
                 .HasConversion(
@@ -50,6 +50,12 @@ namespace Infrastructure.Configurations
             builder.Property(e => e.UpdatedAt).HasColumnName("GuncellemeTarihi");
 
             // Relationships
+            builder.HasOne(e => e.ResponsiblePerson)
+                .WithMany()
+                .HasForeignKey(e => e.ResponsiblePersonId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_Aksiyonlar_Kullanicilar");
+
             builder.HasOne(e => e.Audit)
                 .WithMany()
                 .HasForeignKey(e => e.AuditId)

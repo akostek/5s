@@ -2627,7 +2627,7 @@ const AuditsPage: React.FC = () => {
           onConfirm={handleConfirmStatusChange}
           confirmLabel="Onayla"
           requireImage={pendingStatusChange?.status === 'PendingApproval'}
-          showImageUpload={pendingStatusChange?.status !== 'Open'} // Hide for "Revizyon İste" (requesting Open status)
+          showImageUpload={pendingStatusChange?.status === 'PendingApproval'} // Only show for "Denetçiye Gönder"
         />
 
         {/* Gallery Dialog */}

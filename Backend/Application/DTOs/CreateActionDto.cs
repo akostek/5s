@@ -21,7 +21,7 @@ namespace Application.DTOs
         public string? SuggestedActivity { get; set; }
         public string? PlannedActivity { get; set; }
         public DateTime? TargetDate { get; set; }
-        public string? ResponsiblePerson { get; set; }
+        public int? ResponsiblePersonId { get; set; }
         public ActionStatus Status { get; set; } = ActionStatus.Open;
         public string? Priority { get; set; }
     }
