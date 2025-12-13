@@ -138,6 +138,8 @@ export interface Action {
   questionId?: number; // PascalCase from backend
   image_path?: string;
   imagePath?: string; // PascalCase from backend
+  evidence_image_path?: string; // Kanıt görseli (alan sorumlusunun yüklediği)
+  evidenceImagePath?: string; // PascalCase from backend
   description?: string;
   suggested_activity?: string;
   suggestedActivity?: string; // PascalCase from backend
@@ -148,9 +150,12 @@ export interface Action {
   responsible_person?: string;
   responsiblePerson?: string; // PascalCase from backend
   status: 'open' | 'in_progress' | 'closed' | 'pending_approval' | 'Open' | 'InProgress' | 'Closed' | 'PendingApproval';
+  statusText?: string; // Turkish status label from backend
+  status_text?: string; // snake_case alternative
   priority?: 'Düşük' | 'Orta' | 'Yüksek';
   question_text?: string;
   questionText?: string; // PascalCase from backend
+  category?: string; // Soru kategorisi (S1-S5)
   category_name?: string;
   categoryName?: string; // PascalCase from backend
   departmentName?: string; // From backend ActionDto

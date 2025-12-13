@@ -139,10 +139,12 @@ const AuditDetailPage: React.FC = () => {
         const mappedActions: AuditAction[] = (actionsData || []).map((a: any) => {
           // Map status from backend enum to frontend format
           let status: 'pending' | 'in_progress' | 'completed' = 'pending';
-          if (a.status === 'Closed' || a.status === 'closed' || a.status === 'Completed') {
+          if (a.status === 'Closed' || a.status === 'closed' || a.status === 'Completed' || a.status === 'Kapandı') {
             status = 'completed';
-          } else if (a.status === 'InProgress' || a.status === 'in_progress' || a.status === 'In Progress') {
+          } else if (a.status === 'InProgress' || a.status === 'in_progress' || a.status === 'In Progress' || a.status === 'Devam Ediyor') {
             status = 'in_progress';
+          } else if (a.status === 'PendingApproval' || a.status === 'pending_approval' || a.status === 'pendingapproval' || a.status === 'Denetçi Kontrolünde') {
+            status = 'pending';
           }
 
           return {
@@ -227,7 +229,7 @@ const AuditDetailPage: React.FC = () => {
       case 'in_progress':
         return 'Devam Ediyor';
       case 'pending':
-        return 'Bekliyor';
+        return 'Denetçi Kontrolünde';
       default:
         return status;
     }

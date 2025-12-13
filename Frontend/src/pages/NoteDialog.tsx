@@ -6,16 +6,22 @@ import {
     DialogActions,
     Button,
     TextField,
-    Typography
+    Typography,
+    Box,
+    CircularProgress,
+    Alert
 } from '@mui/material';
+import { CloudUpload, Image as ImageIcon } from '@mui/icons-material';
+import apiService from '../services/api';
 
 interface NoteDialogProps {
     open: boolean;
     title: string;
     description?: string;
     onClose: () => void;
-    onConfirm: (note: string) => void;
+    onConfirm: (note: string, imageUrl?: string) => void;
     confirmLabel?: string;
+    requireImage?: boolean;
 }
 
 const NoteDialog: React.FC<NoteDialogProps> = ({
@@ -24,17 +30,62 @@ const NoteDialog: React.FC<NoteDialogProps> = ({
     description,
     onClose,
     onConfirm,
-    confirmLabel = 'Kaydet'
+    confirmLabel = 'Kaydet',
+    requireImage = false
 }) => {
     const [note, setNote] = useState('');
+    const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
-    const handleConfirm = () => {
-        onConfirm(note);
-        setNote('');
+    const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            setUploadError('Lütfen geçerli bir görsel dosyası seçin.');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            setUploadError('Dosya boyutu 5MB\'dan küçük olmalıdır.');
+            return;
+        }
+
+        setUploading(true);
+        setUploadError(null);
+
+        try {
+            const result = await apiService.uploadImage(file);
+            setImageUrl(result.imageUrl);
+        } catch (error: any) {
+            console.error('Image upload error:', error);
+            setUploadError(error?.response?.data?.message || 'Görsel yüklenirken hata oluştu.');
+        } finally {
+            setUploading(false);
+        }
     };
 
+    const handleConfirm = () => {
+        onConfirm(note, imageUrl);
+        setNote('');
+        setImageUrl(undefined);
+        setUploadError(null);
+    };
+
+    const handleClose = () => {
+        setNote('');
+        setImageUrl(undefined);
+        setUploadError(null);
+        onClose();
+    };
+
+    const isConfirmDisabled = requireImage ? (!note.trim() || !imageUrl) : !note.trim();
+
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth sx={{ zIndex: 2000 }}>
             <DialogTitle>{title}</DialogTitle>
             <DialogContent>
                 {description && (
@@ -42,6 +93,60 @@ const NoteDialog: React.FC<NoteDialogProps> = ({
                         {description}
                     </Typography>
                 )}
+
+                {/* Image Upload Section */}
+                <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                        Kanıt Görseli {requireImage && <span style={{ color: 'red' }}>*</span>}
+                    </Typography>
+
+                    {uploadError && (
+                        <Alert severity="error" sx={{ mb: 1, fontSize: '0.8rem' }}>
+                            {uploadError}
+                        </Alert>
+                    )}
+
+                    {imageUrl ? (
+                        <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                            <img
+                                src={imageUrl.startsWith('http') ? imageUrl :
+                                    `${process.env.REACT_APP_API_URL?.replace('/api', '') || `http://${window.location.hostname}:5000`}${imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl}`}
+                                alt="Kanıt görseli"
+                                style={{
+                                    maxWidth: '100%',
+                                    maxHeight: 200,
+                                    borderRadius: 4,
+                                    border: '1px solid #e0e0e0'
+                                }}
+                            />
+                            <Button
+                                size="small"
+                                color="error"
+                                onClick={() => setImageUrl(undefined)}
+                                sx={{ position: 'absolute', top: 4, right: 4, minWidth: 'auto', p: 0.5 }}
+                            >
+                                ✕
+                            </Button>
+                        </Box>
+                    ) : (
+                        <Button
+                            component="label"
+                            variant="outlined"
+                            startIcon={uploading ? <CircularProgress size={16} /> : <CloudUpload />}
+                            disabled={uploading}
+                            sx={{ width: '100%', py: 2 }}
+                        >
+                            {uploading ? 'Yükleniyor...' : 'Görsel Yükle'}
+                            <input
+                                type="file"
+                                hidden
+                                accept="image/*"
+                                onChange={handleFileSelect}
+                            />
+                        </Button>
+                    )}
+                </Box>
+
                 <TextField
                     autoFocus
                     margin="dense"
@@ -56,8 +161,8 @@ const NoteDialog: React.FC<NoteDialogProps> = ({
                 />
             </DialogContent>
             <DialogActions>
-                <Button onClick={onClose}>İptal</Button>
-                <Button onClick={handleConfirm} variant="contained" disabled={!note.trim()}>
+                <Button onClick={handleClose}>İptal</Button>
+                <Button onClick={handleConfirm} variant="contained" disabled={isConfirmDisabled}>
                     {confirmLabel}
                 </Button>
             </DialogActions>

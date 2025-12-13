@@ -14,6 +14,7 @@ namespace Domain.Entities
         public int? SectorId { get; set; }
         public int? DirectorateId { get; set; }
         public string? ImagePath { get; set; }
+        public string? EvidenceImagePath { get; set; } // Kanıt görseli (Denetçiye Gönder'de yüklenen)
         public string? Description { get; set; }
         public string? SuggestedActivity { get; set; }
         public string? PlannedActivity { get; set; }
@@ -28,6 +29,7 @@ namespace Domain.Entities
         public virtual Sector? Sector { get; set; }
         public virtual Directorate? Directorate { get; set; }
         public virtual ICollection<ActionHistory> History { get; set; } = new List<ActionHistory>();
+        public virtual ICollection<ActionImage> Images { get; set; } = new List<ActionImage>();
     }
 }
 

@@ -54,6 +54,8 @@ import {
   Warning,
   Schedule,
   PriorityHigh,
+  Send,
+  Undo,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -94,9 +96,9 @@ const normalizeActionStatus = (status: any): NormalizedActionStatus => {
       case 1:
         return 'in_progress';
       case 2:
-        return 'closed';
-      case 3:
         return 'pending_approval';
+      case 3:
+        return 'closed';
       default:
         return 'open';
     }
@@ -104,25 +106,27 @@ const normalizeActionStatus = (status: any): NormalizedActionStatus => {
 
   const value = (status ?? '').toString().toLowerCase();
 
-  if (value === 'inprogress' || value === 'in_progress') {
+  // Turkish & English Mappings
+  if (value === 'inprogress' || value === 'in_progress' || value === 'devam ediyor') {
     return 'in_progress';
   }
 
-  if (value === 'closed' || value === 'completed') {
+  if (value === 'closed' || value === 'completed' || value === 'kapandı' || value === 'tamamlandı') {
     return 'closed';
   }
 
-  if (value === 'pending_approval' || value === 'pendingapproval') {
+  if (value === 'pending_approval' || value === 'pendingapproval' || value === 'denetçi kontrolünde' || value === 'denetçi onayı bekliyor') {
     return 'pending_approval';
   }
 
+  // Default to open for 'open', 'açık', 'aksiyon sahibinde' or unknown
   return 'open';
 };
 
 const getActionStatusLabel = (status: NormalizedActionStatus) => {
   switch (status) {
     case 'open':
-      return 'Alan Sorumlusunda';
+      return 'Aksiyon Sahibinde';
     case 'in_progress':
       return 'Devam Ediyor';
     case 'closed':
@@ -298,11 +302,11 @@ const AuditsPage: React.FC = () => {
     setNoteDialogOpen(true);
   };
 
-  const handleConfirmStatusChange = async (note: string) => {
+  const handleConfirmStatusChange = async (note: string, imageUrl?: string) => {
     if (!pendingStatusChange) return;
 
     try {
-      await apiService.changeActionStatus(pendingStatusChange.id, pendingStatusChange.status, note);
+      await apiService.changeActionStatus(pendingStatusChange.id, pendingStatusChange.status, note, imageUrl);
 
       // Update local state
       setSelectedAuditActions(prev => prev.map(a =>
@@ -1993,171 +1997,228 @@ const AuditsPage: React.FC = () => {
                     <Table stickyHeader size="small">
                       <TableHead>
                         <TableRow>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', bgcolor: 'grey.100', minWidth: 50 }}>#</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', bgcolor: 'grey.100', minWidth: 250 }}>Tespit Edilen Uygunsuzluk</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', bgcolor: 'grey.100', minWidth: 200 }}>Soru</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', bgcolor: 'grey.100', minWidth: 120 }}>Sorumlu</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', bgcolor: 'grey.100', minWidth: 120 }}>Hedef Tarih</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', bgcolor: 'grey.100', minWidth: 150 }}>Önerilen Faaliyet</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', bgcolor: 'grey.100', minWidth: 150 }}>Planlanan Faaliyet</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', bgcolor: 'grey.100', minWidth: 100 }}>Öncelik</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', bgcolor: 'grey.100', minWidth: 100 }}>Durum</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', bgcolor: 'grey.100', minWidth: 150 }}>İşlemler</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 25, p: 0.5 }}>#</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 35, p: 0.5 }}>5S</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 150, p: 0.5 }}>Soru</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 150, p: 0.5 }}>Uygunsuzluk</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 120, p: 0.5 }}>Önerilen Faaliyet</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 120, p: 0.5 }}>Planlanan Faaliyet</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 80, p: 0.5 }}>Denetleyen</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 80, p: 0.5 }}>Sorumlu</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 65, p: 0.5 }}>Açılma</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 65, p: 0.5 }}>Hedef</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 45, p: 0.5 }}>Açık</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 50, p: 0.5 }}>Gecikme</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 55, p: 0.5 }}>Görsel</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 55, p: 0.5 }}>Kanıt</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 50, p: 0.5 }}>Öncelik</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 90, p: 0.5 }}>Durum</TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 100, p: 0.5 }}>İşlemler</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {selectedAuditActions.map((action, index) => (
-                          <TableRow key={action.id} hover>
-                            <TableCell sx={{ fontSize: '0.7rem' }}>{index + 1}</TableCell>
-                            <TableCell sx={{ fontSize: '0.7rem', maxWidth: 250 }}>
-                              <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>
-                                {action.description || 'Uygunsuzluk tespit edilmedi'}
-                              </Typography>
-                            </TableCell>
-                            <TableCell sx={{ fontSize: '0.7rem', maxWidth: 200 }}>
-                              <Typography variant="body2" sx={{ fontSize: '0.7rem' }} noWrap>
-                                {action.question_text || '-'}
-                              </Typography>
-                            </TableCell>
-                            <TableCell sx={{ fontSize: '0.7rem' }}>
-                              {action.responsible_person || 'Atanmadı'}
-                            </TableCell>
-                            <TableCell sx={{ fontSize: '0.7rem' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    fontSize: '0.7rem',
-                                    color: action.target_date && new Date(action.target_date) < new Date() && action.status !== 'closed'
-                                      ? 'error.main'
-                                      : 'text.primary'
-                                  }}
-                                >
-                                  {action.target_date ? format(new Date(action.target_date), 'dd/MM/yyyy') : '-'}
-                                </Typography>
-                                {action.target_date && new Date(action.target_date) < new Date() && action.status !== 'closed' && (
+                        {selectedAuditActions.map((action, index) => {
+                          // Calculate days open
+                          const createdDate = action.created_at ? new Date(action.created_at) : new Date();
+                          const today = new Date();
+                          const daysOpen = Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+
+                          // Calculate delay days
+                          const targetDate = action.target_date ? new Date(action.target_date) : null;
+                          const delayDays = targetDate && normalizeActionStatus(action.status) !== 'closed'
+                            ? Math.max(0, Math.floor((today.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24)))
+                            : 0;
+
+                          // Extract S category from category_name (e.g., "Seiri"=S1, "Seiton"=S2, etc.)
+                          const categoryMap: { [key: string]: string } = {
+                            'seiri': 'S1', 'seiton': 'S2', 'seiso': 'S3',
+                            'seiketsu': 'S4', 'shitsuke': 'S5',
+                            'ayıklama': 'S1', 'düzenleme': 'S2', 'temizlik': 'S3',
+                            'standartlaştırma': 'S4', 'disiplin': 'S5',
+                            'seiri (ayıklama)': 'S1', 'seiton (düzenleme)': 'S2',
+                            'seiso (temizlik)': 'S3', 'seiketsu (standartlaştırma)': 'S4',
+                            'shitsuke (disiplin)': 'S5'
+                          };
+                          const catName = (action.category_name || action.categoryName || '').toLowerCase();
+                          const sCategory = categoryMap[catName] ||
+                            catName.match(/s[1-5]/i)?.[0]?.toUpperCase() ||
+                            action.question_text?.match(/S[1-5]/i)?.[0]?.toUpperCase() ||
+                            (catName ? catName.substring(0, 4) : '-');
+
+                          return (
+                            <TableRow key={action.id} hover>
+                              <TableCell sx={{ fontSize: '0.6rem', p: 0.5 }}>{index + 1}</TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', p: 0.5 }}>
+                                <Chip label={sCategory} size="small" color={sCategory !== '-' ? 'primary' : 'default'} sx={{ fontSize: '0.5rem', height: 16, minWidth: 25 }} />
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', maxWidth: 150, p: 0.5 }} title={action.question_text}>
+                                {action.question_text?.substring(0, 40) || '-'}{action.question_text && action.question_text.length > 40 ? '...' : ''}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', maxWidth: 150, p: 0.5 }} title={action.description}>
+                                {action.description?.substring(0, 40) || '-'}{action.description && action.description.length > 40 ? '...' : ''}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', maxWidth: 120, p: 0.5 }} title={action.suggested_activity}>
+                                {action.suggested_activity?.substring(0, 30) || '-'}{action.suggested_activity && action.suggested_activity.length > 30 ? '...' : ''}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', maxWidth: 120, p: 0.5 }} title={action.planned_activity}>
+                                {action.planned_activity?.substring(0, 30) || '-'}{action.planned_activity && action.planned_activity.length > 30 ? '...' : ''}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', p: 0.5 }}>
+                                {selectedAudit?.auditor_name || '-'}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', p: 0.5 }}>
+                                {action.responsible_person || '-'}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', p: 0.5 }}>
+                                {action.created_at ? format(new Date(action.created_at), 'dd/MM/yy') : '-'}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', p: 0.5, color: delayDays > 0 ? 'error.main' : 'text.primary' }}>
+                                {action.target_date ? format(new Date(action.target_date), 'dd/MM/yy') : '-'}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', p: 0.5, textAlign: 'center' }}>
+                                {daysOpen}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', p: 0.5, textAlign: 'center', color: delayDays > 0 ? 'error.main' : 'text.secondary' }}>
+                                {delayDays > 0 ? delayDays : '-'}
+                              </TableCell>
+                              <TableCell sx={{ p: 0.5 }}>
+                                {(() => {
+                                  const imgPathRaw = action.image_path || action.imagePath;
+                                  if (!imgPathRaw) return <Typography sx={{ fontSize: '0.55rem', color: 'text.secondary' }}>-</Typography>;
+                                  const paths = imgPathRaw.split(',').map((p: string) => p.trim()).filter((p: string) => p);
+                                  const baseUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || `http://${window.location.hostname}:5000`;
+                                  return (
+                                    <Box sx={{ display: 'flex', gap: 0.25 }}>
+                                      {paths.slice(0, 3).map((imgPath: string, idx: number) => {
+                                        const fullUrl = imgPath.startsWith('http') ? imgPath : `${baseUrl}${imgPath.startsWith('/') ? imgPath : '/' + imgPath}`;
+                                        return (
+                                          <Box
+                                            key={idx}
+                                            component="img"
+                                            src={fullUrl}
+                                            alt={`Görsel ${idx + 1}`}
+                                            sx={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 0.5, cursor: 'pointer', border: '1px solid #ddd' }}
+                                            onClick={() => window.open(fullUrl, '_blank')}
+                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                          />
+                                        );
+                                      })}
+                                    </Box>
+                                  );
+                                })()}
+                              </TableCell>
+                              <TableCell sx={{ p: 0.5 }}>
+                                {(() => {
+                                  const imgPath = action.evidence_image_path || action.evidenceImagePath;
+                                  if (!imgPath) return <Typography sx={{ fontSize: '0.55rem', color: 'text.secondary' }}>-</Typography>;
+                                  const fullUrl = imgPath.startsWith('http') ? imgPath :
+                                    `${process.env.REACT_APP_API_URL?.replace('/api', '') || `http://${window.location.hostname}:5000`}${imgPath.startsWith('/') ? imgPath : '/' + imgPath}`;
+                                  return (
+                                    <Box
+                                      component="img"
+                                      src={fullUrl}
+                                      alt="Kanıt"
+                                      sx={{ width: 35, height: 35, objectFit: 'cover', borderRadius: 1, cursor: 'pointer', border: '1px solid #ddd' }}
+                                      onClick={() => window.open(fullUrl, '_blank')}
+                                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                  );
+                                })()}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', p: 0.5 }}>
+                                {action.priority ? (
                                   <Chip
-                                    label="Gecikmiş"
+                                    label={action.priority.charAt(0)}
                                     size="small"
-                                    color="error"
-                                    sx={{ fontSize: '0.55rem', height: 16 }}
+                                    color={
+                                      action.priority === 'Yüksek' ? 'error' :
+                                        action.priority === 'Orta' ? 'warning' : 'info'
+                                    }
+                                    sx={{ fontSize: '0.5rem', height: 16, minWidth: 20 }}
+                                    title={action.priority}
                                   />
-                                )}
-                              </Box>
-                            </TableCell>
-                            <TableCell sx={{ fontSize: '0.7rem', maxWidth: 150 }}>
-                              <Typography variant="body2" sx={{ fontSize: '0.7rem' }} noWrap>
-                                {action.suggested_activity || '-'}
-                              </Typography>
-                            </TableCell>
-                            <TableCell sx={{ fontSize: '0.7rem', maxWidth: 150 }}>
-                              <Typography variant="body2" sx={{ fontSize: '0.7rem' }} noWrap>
-                                {action.planned_activity || '-'}
-                              </Typography>
-                            </TableCell>
-                            <TableCell sx={{ fontSize: '0.7rem' }}>
-                              {action.priority ? (
+                                ) : '-'}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.6rem', p: 0.5 }}>
                                 <Chip
-                                  label={action.priority}
+                                  label={action.statusText || action.status_text || (typeof action.status === 'string' ? action.status : getActionStatusLabel(normalizeActionStatus(action.status)))}
                                   size="small"
-                                  color={
-                                    action.priority === 'Yüksek' ? 'error' :
-                                      action.priority === 'Orta' ? 'warning' :
-                                        'info'
-                                  }
-                                  sx={{ fontSize: '0.6rem', height: 20 }}
+                                  color={getActionStatusChipColor(normalizeActionStatus(action.status))}
+                                  sx={{ fontSize: '0.5rem', height: 16 }}
                                 />
-                              ) : '-'}
-                            </TableCell>
-                            <TableCell sx={{ fontSize: '0.7rem' }}>
-                              <Chip
-                                label={getActionStatusLabel(normalizeActionStatus(action.status))}
-                                size="small"
-                                color={getActionStatusChipColor(normalizeActionStatus(action.status))}
-                                sx={{ fontSize: '0.6rem', height: 20 }}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleViewHistory(action.id)}
-                                  title="Tarihçe"
-                                  sx={{ p: 0.5 }}
-                                >
-                                  <History fontSize="small" />
-                                </IconButton>
+                              </TableCell>
+                              <TableCell sx={{ p: 0.5 }}>
+                                <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center' }}>
+                                  <Tooltip title="Tarihçe">
+                                    <IconButton size="small" onClick={() => handleViewHistory(action.id)} sx={{ p: 0.25 }}>
+                                      <History sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                  </Tooltip>
 
-                                {actionPermissions['Action_Edit'] && (
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    startIcon={<Edit />}
-                                    sx={{ fontSize: '0.6rem', textTransform: 'none', minWidth: 'auto', px: 0.75, py: 0.25 }}
-                                    onClick={() => handleEditAction(action)}
-                                  >
-                                    Düzenle
-                                  </Button>
-                                )}
+                                  {actionPermissions['Action_Edit'] && (
+                                    <Tooltip title="Düzenle">
+                                      <IconButton size="small" onClick={() => handleEditAction(action)} sx={{ p: 0.25 }}>
+                                        <Edit sx={{ fontSize: 16 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
 
-                                {/* Workflow Buttons */}
-                                {/* Area Responsible: Send to Auditor */}
-                                {/* Show if: Status is Open AND (User is Admin OR User is Responsible Person) */}
-                                {action.status === 'open' && (user?.role?.includes('admin') || user?.name === action.responsible_person) && (
-                                  <Button
-                                    size="small"
-                                    variant="contained"
-                                    color="primary"
-                                    sx={{ fontSize: '0.6rem', textTransform: 'none', minWidth: 'auto', px: 0.75, py: 0.25 }}
-                                    onClick={() => handleRequestStatusChange(action, 'pending_approval', 'Denetçiye Gönder')}
-                                  >
-                                    Denetçiye Gönder
-                                  </Button>
-                                )}
+                                  {/* Workflow Buttons */}
+                                  {action.status === 'open' && (user?.role?.includes('admin') || user?.name === action.responsible_person) && (
+                                    <Tooltip title="Denetçiye Gönder">
+                                      <IconButton
+                                        size="small"
+                                        color="primary"
+                                        onClick={() => handleRequestStatusChange(action, 'PendingApproval', 'Denetçiye Gönder')}
+                                        sx={{ p: 0.25 }}
+                                      >
+                                        <Send sx={{ fontSize: 16 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
 
-                                {/* Auditor: Complete or Return */}
-                                {/* Show if: Status is Pending Approval AND (User is Admin OR User is assigned Auditor) */}
-                                {action.status === 'pending_approval' && (user?.role?.includes('admin') || (selectedAudit && user?.id === selectedAudit.auditor_id)) && (
-                                  <>
-                                    <Button
-                                      size="small"
-                                      variant="contained"
-                                      color="success"
-                                      startIcon={<CheckCircle />}
-                                      sx={{ fontSize: '0.6rem', textTransform: 'none', minWidth: 'auto', px: 0.75, py: 0.25 }}
-                                      onClick={() => handleRequestStatusChange(action, 'closed', 'Aksiyonu Kapat (Tamamlandı)')}
-                                    >
-                                      Tamamlandı
-                                    </Button>
-                                    <Button
-                                      size="small"
-                                      variant="contained"
-                                      color="warning"
-                                      sx={{ fontSize: '0.6rem', textTransform: 'none', minWidth: 'auto', px: 0.75, py: 0.25 }}
-                                      onClick={() => handleRequestStatusChange(action, 'open', 'Alan Sorumlusuna İade Et')}
-                                    >
-                                      İade Et
-                                    </Button>
-                                  </>
-                                )}
+                                  {action.status === 'pending_approval' && (user?.role?.includes('admin') || (selectedAudit && user?.id === selectedAudit.auditor_id)) && (
+                                    <>
+                                      <Tooltip title="Tamamlandı">
+                                        <IconButton
+                                          size="small"
+                                          color="success"
+                                          onClick={() => handleRequestStatusChange(action, 'Closed', 'Aksiyonu Kapat (Tamamlandı)')}
+                                          sx={{ p: 0.25 }}
+                                        >
+                                          <CheckCircle sx={{ fontSize: 16 }} />
+                                        </IconButton>
+                                      </Tooltip>
+                                      <Tooltip title="İade Et">
+                                        <IconButton
+                                          size="small"
+                                          color="warning"
+                                          onClick={() => handleRequestStatusChange(action, 'Open', 'Alan Sorumlusuna İade Et')}
+                                          sx={{ p: 0.25 }}
+                                        >
+                                          <Undo sx={{ fontSize: 16 }} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </>
+                                  )}
 
-                                {/* Legacy Complete Button (Only if not using workflow or as fallback for older actions) */}
-                                {actionPermissions['Action_Complete'] && action.status === 'in_progress' && (
-                                  <Button
-                                    size="small"
-                                    variant="contained"
-                                    color="success"
-                                    startIcon={<CheckCircle />}
-                                    sx={{ fontSize: '0.6rem', textTransform: 'none', minWidth: 'auto', px: 0.75, py: 0.25 }}
-                                    onClick={() => handleRequestStatusChange(action, 'closed', 'Aksiyonu Tamamla')}
-                                  >
-                                    Tamamla
-                                  </Button>
-                                )}
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                                  {actionPermissions['Action_Complete'] && action.status === 'in_progress' && (
+                                    <Tooltip title="Tamamla">
+                                      <IconButton
+                                        size="small"
+                                        color="success"
+                                        onClick={() => handleRequestStatusChange(action, 'Closed', 'Aksiyonu Tamamla')}
+                                        sx={{ p: 0.25 }}
+                                      >
+                                        <CheckCircle sx={{ fontSize: 16 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </TableContainer>
@@ -2565,9 +2626,10 @@ const AuditsPage: React.FC = () => {
           onClose={() => setNoteDialogOpen(false)}
           onConfirm={handleConfirmStatusChange}
           confirmLabel="Onayla"
+          requireImage={pendingStatusChange?.status === 'PendingApproval'}
         />
       </Container>
-    </Fade>
+    </Fade >
   );
 };
 

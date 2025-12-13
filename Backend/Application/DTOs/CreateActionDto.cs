@@ -16,6 +16,7 @@ namespace Application.DTOs
         public int? DirectorateId { get; set; }
 
         public string? ImagePath { get; set; }
+        public List<string>? ImageUrls { get; set; } // Frontend sends array of image URLs
         public string? Description { get; set; }
         public string? SuggestedActivity { get; set; }
         public string? PlannedActivity { get; set; }

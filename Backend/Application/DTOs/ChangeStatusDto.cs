@@ -6,5 +6,6 @@ namespace Application.DTOs
     {
         public ActionStatus Status { get; set; }
         public string? Comment { get; set; }
+        public string? ImageUrl { get; set; }
     }
 }

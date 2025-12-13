@@ -30,8 +30,24 @@ namespace Infrastructure.Configurations
             builder.Property(e => e.PlannedActivity).HasMaxLength(1000).HasColumnName("PlanlananFaaliyet");
             builder.Property(e => e.TargetDate).HasColumnName("HedefTarih");
             builder.Property(e => e.ResponsiblePerson).HasMaxLength(200).HasColumnName("Sorumlu");
-            builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(50).HasColumnName("Durum");
+            builder.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasConversion(
+                    v => v == Domain.Enums.ActionStatus.Open ? "Aksiyon Sahibinde" :
+                         v == Domain.Enums.ActionStatus.InProgress ? "Devam Ediyor" :
+                         v == Domain.Enums.ActionStatus.PendingApproval ? "Denetçi Kontrolünde" :
+                         v == Domain.Enums.ActionStatus.Closed ? "Kapandı" : v.ToString(),
+                    v => v == "Aksiyon Sahibinde" ? Domain.Enums.ActionStatus.Open :
+                         v == "Açık" ? Domain.Enums.ActionStatus.Open : // Backward compatibility
+                         v == "Devam Ediyor" ? Domain.Enums.ActionStatus.InProgress :
+                         v == "Denetçi Kontrolünde" ? Domain.Enums.ActionStatus.PendingApproval :
+                         v == "Kapandı" ? Domain.Enums.ActionStatus.Closed :
+                         v == "Tamamlandı" ? Domain.Enums.ActionStatus.Closed : // Backward compatibility
+                         Enum.Parse<Domain.Enums.ActionStatus>(v))
+                .HasMaxLength(50)
+                .HasColumnName("Durum");
             builder.Property(e => e.Priority).HasMaxLength(50).HasColumnName("Oncelik");
+            builder.Property(e => e.EvidenceImagePath).HasMaxLength(500).HasColumnName("KanitGorselYolu");
             builder.Property(e => e.CreatedAt).HasColumnName("OlusturmaTarihi");
             builder.Property(e => e.UpdatedAt).HasColumnName("GuncellemeTarihi");
 

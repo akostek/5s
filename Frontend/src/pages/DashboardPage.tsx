@@ -59,14 +59,14 @@ const DashboardPage: React.FC = () => {
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [areaImageDialog, setAreaImageDialog] = useState<string | null>(null);
   const [imageZoomOpen, setImageZoomOpen] = useState(false);
-  
+
   const [sectors, setSectors] = useState<any[]>([]);
   const [directorates, setDirectorates] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
   const [filteredAreas, setFilteredAreas] = useState<any[]>([]);
   const [audits, setAudits] = useState<Audit[]>([]);
-  
+
   const [stats, setStats] = useState([
     { label: 'Toplam Denetim', value: '0', icon: <Assignment fontSize="small" />, color: '#6366f1', change: '', actionInfo: '' },
     { label: 'Ortalama Puan', value: '0%', icon: <TrendingUp fontSize="small" />, color: '#10b981', change: '', actionInfo: '' },
@@ -74,7 +74,7 @@ const DashboardPage: React.FC = () => {
     { label: 'Tamamlanma', value: '0%', icon: <CheckCircle fontSize="small" />, color: '#8b5cf6', change: '', actionInfo: '' },
     { label: 'Aksiyonlar', value: '0/0', icon: <Warning fontSize="small" />, color: '#ef4444', change: '', actionInfo: '0 açık' },
   ]);
-  
+
   const [recentAudits, setRecentAudits] = useState<Array<{
     id: number;
     department: string;
@@ -89,14 +89,14 @@ const DashboardPage: React.FC = () => {
     openActions?: number;
     status?: string;
   }>>([]);
-  
+
   const [sectorRankings, setSectorRankings] = useState<Array<{
     sector: string;
     avgScore: number;
     level: string;
     auditCount: number;
   }>>([]);
-  
+
   const [sectorBreakdown, setSectorBreakdown] = useState<Array<{
     sector: string;
     seiri: number;
@@ -106,7 +106,7 @@ const DashboardPage: React.FC = () => {
     shitsuke: number;
     total: number;
   }>>([]);
-  
+
   const [monthProgress, setMonthProgress] = useState({ current: 0, total: 0, percentage: 0 });
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
@@ -172,46 +172,46 @@ const DashboardPage: React.FC = () => {
 
   const filterAreas = () => {
     let filtered = [...areas];
-    
+
     if (selectedSector !== 'all') {
       // Filter by sector through departments
-      const sectorDepartments = departments.filter((d: any) => 
+      const sectorDepartments = departments.filter((d: any) =>
         (d.sector || d.Sector) === selectedSector
       ).map((d: any) => d.id || d.Id);
-      filtered = filtered.filter((a: any) => 
+      filtered = filtered.filter((a: any) =>
         sectorDepartments.includes(a.departmentId || a.department_id || a.DepartmentId)
       );
     }
-    
+
     if (selectedDirectorate !== 'all') {
-      const directorateDepartments = departments.filter((d: any) => 
+      const directorateDepartments = departments.filter((d: any) =>
         (d.directorate || d.Directorate) === selectedDirectorate
       ).map((d: any) => d.id || d.Id);
-      filtered = filtered.filter((a: any) => 
+      filtered = filtered.filter((a: any) =>
         directorateDepartments.includes(a.departmentId || a.department_id || a.DepartmentId)
       );
     }
-    
+
     if (selectedDepartment !== 'all') {
-      filtered = filtered.filter((a: any) => 
+      filtered = filtered.filter((a: any) =>
         (a.departmentId || a.department_id || a.DepartmentId) === parseInt(selectedDepartment)
       );
     }
-    
+
     setFilteredAreas(filtered);
   };
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch all audits and required data
       const [data, sectorsData, departmentsData] = await Promise.all([
         apiService.getAudits(),
         apiService.getSectors(),
         apiService.getDepartments(),
       ]);
-      
+
       // Update sectors and departments state if not already loaded
       if (sectors.length === 0) {
         setSectors(sectorsData);
@@ -219,11 +219,11 @@ const DashboardPage: React.FC = () => {
       if (departments.length === 0) {
         setDepartments(departmentsData);
       }
-      
+
       // Use the fetched data for calculations
       const currentSectors = sectors.length > 0 ? sectors : sectorsData;
       const currentDepartments = departments.length > 0 ? departments : departmentsData;
-      
+
       // Map backend data to frontend Audit type
       const mappedAudits = data.map((a: any) => ({
         id: a.id || a.Id,
@@ -250,9 +250,9 @@ const DashboardPage: React.FC = () => {
         created_at: a.createdAt || a.created_at || a.CreatedAt ? new Date(a.createdAt || a.created_at || a.CreatedAt).toISOString() : new Date().toISOString(),
         updated_at: a.updatedAt || a.updated_at || a.UpdatedAt ? new Date(a.updatedAt || a.updated_at || a.UpdatedAt).toISOString() : undefined,
       }));
-      
+
       setAudits(mappedAudits);
-      
+
       // Calculate stats
       const totalAudits = mappedAudits.length;
       const completedAudits = mappedAudits.filter(a => a.status === 'tamamlandı' || a.status === 'published' || a.status === 'denetlendi').length;
@@ -260,15 +260,15 @@ const DashboardPage: React.FC = () => {
       const maxScore = mappedAudits.reduce((sum, a) => sum + (a.max_possible_score || 0), 0);
       const avgScore = totalAudits > 0 && maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
       const completionRate = totalAudits > 0 ? Math.round((completedAudits / totalAudits) * 100) : 0;
-      
+
       // Get unique users count
       const uniqueAuditors = new Set(mappedAudits.map(a => a.auditor_id).filter((id: any) => id && id !== 0));
       const activeUsers = uniqueAuditors.size;
-      
+
       // Calculate action stats
       const totalActions = mappedAudits.reduce((sum, a) => sum + (a.total_actions || 0), 0);
       const openActions = mappedAudits.reduce((sum, a) => sum + (a.open_actions || 0), 0);
-      
+
       // Get recent audits (last 10, sorted by date)
       const sortedAudits = [...mappedAudits]
         .sort((a, b) => {
@@ -277,19 +277,19 @@ const DashboardPage: React.FC = () => {
           return dateB - dateA;
         })
         .slice(0, 10);
-      
+
       const mappedRecentAudits = sortedAudits.map(audit => {
-        const score = audit.max_possible_score > 0 
-          ? Math.round((audit.total_score / audit.max_possible_score) * 100) 
+        const score = audit.max_possible_score > 0
+          ? Math.round((audit.total_score / audit.max_possible_score) * 100)
           : 0;
         const level = audit.level_achieved || 'Başlangıç';
         const dateStr = audit.audit_date || audit.created_at;
-        const date = dateStr 
+        const date = dateStr
           ? format(new Date(dateStr), 'd MMMM yyyy', { locale: tr })
           : format(new Date(), 'd MMMM yyyy', { locale: tr });
         const auditor = audit.auditor_name || 'Bilinmiyor';
         const department = audit.department_name || audit.area_name || 'Bilinmiyor';
-        
+
         // Get sector and directorate from audit or department
         const sector = audit.sector_name || (() => {
           const dept = currentDepartments.find((d: any) => (d.id || d.Id) === audit.department_id);
@@ -307,7 +307,7 @@ const DashboardPage: React.FC = () => {
           const dept = currentDepartments.find((d: any) => (d.id || d.Id) === audit.department_id);
           return dept?.directorate || dept?.Directorate || dept?.directorateName || dept?.DirectorateName || '-';
         })();
-        
+
         return {
           id: audit.id,
           department,
@@ -323,13 +323,13 @@ const DashboardPage: React.FC = () => {
           status: audit.status,
         };
       });
-      
+
       // Calculate sector rankings
       const sectorStats: Record<string, { totalScore: number; maxScore: number; count: number }> = {};
       mappedAudits.forEach((audit: any) => {
         // Get sector from audit first (from mapped data)
         let sector = audit.sector_name;
-        
+
         // If not found in audit, try to get from department
         if (!sector) {
           const dept = currentDepartments.find((d: any) => (d.id || d.Id) === audit.department_id);
@@ -342,16 +342,16 @@ const DashboardPage: React.FC = () => {
             }
             // Fallback to old field names
             if (!sector) {
-          sector = dept?.sector || dept?.Sector || dept?.sectorName || dept?.SectorName;
-        }
+              sector = dept?.sector || dept?.Sector || dept?.sectorName || dept?.SectorName;
+            }
           }
         }
-        
+
         // Skip if still no sector found
         if (!sector || sector === '-' || sector === null || sector === undefined) {
           return; // Skip audits without sector
         }
-        
+
         if (!sectorStats[sector]) {
           sectorStats[sector] = { totalScore: 0, maxScore: 0, count: 0 };
         }
@@ -359,7 +359,7 @@ const DashboardPage: React.FC = () => {
         sectorStats[sector].maxScore += audit.max_possible_score || 0;
         sectorStats[sector].count += 1;
       });
-      
+
       const rankings = Object.entries(sectorStats)
         .map(([sector, stats]) => {
           const avgScore = stats.maxScore > 0 ? Math.round((stats.totalScore / stats.maxScore) * 100) : 0;
@@ -369,7 +369,7 @@ const DashboardPage: React.FC = () => {
           else if (avgScore >= 50) level = '3S';
           else if (avgScore >= 30) level = '2S';
           else if (avgScore >= 10) level = '1S';
-          
+
           return {
             sector,
             avgScore,
@@ -378,9 +378,9 @@ const DashboardPage: React.FC = () => {
           };
         })
         .sort((a, b) => b.avgScore - a.avgScore);
-      
+
       setSectorRankings(rankings);
-      
+
       // Calculate sector breakdown (simplified - would need category breakdown from backend)
       const breakdown = Object.entries(sectorStats)
         .filter(([sector]) => sector && sector !== '-') // Filter out invalid sectors
@@ -398,7 +398,7 @@ const DashboardPage: React.FC = () => {
           };
         });
       setSectorBreakdown(breakdown);
-      
+
       // Calculate monthly progress
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -408,10 +408,10 @@ const DashboardPage: React.FC = () => {
         const auditDate = new Date(auditDateStr);
         return auditDate >= startOfMonth;
       });
-      const monthCompleted = monthAudits.filter(a => 
+      const monthCompleted = monthAudits.filter(a =>
         a.status === 'tamamlandı' || a.status === 'published' || a.status === 'denetlendi'
       ).length;
-      
+
       setStats([
         { label: 'Toplam Denetim', value: totalAudits.toString(), icon: <Assignment fontSize="small" />, color: '#6366f1', change: '', actionInfo: '' },
         { label: 'Ortalama Puan', value: `${avgScore}%`, icon: <TrendingUp fontSize="small" />, color: '#10b981', change: '', actionInfo: '' },
@@ -419,7 +419,7 @@ const DashboardPage: React.FC = () => {
         { label: 'Tamamlanma', value: `${completionRate}%`, icon: <CheckCircle fontSize="small" />, color: '#8b5cf6', change: '', actionInfo: '' },
         { label: 'Aksiyonlar', value: `${openActions}/${totalActions}`, icon: <Warning fontSize="small" />, color: '#ef4444', change: '', actionInfo: `${openActions} açık` },
       ]);
-      
+
       setRecentAudits(mappedRecentAudits);
       setMonthProgress({
         current: monthCompleted,
@@ -451,23 +451,23 @@ const DashboardPage: React.FC = () => {
         return imageUrl;
       }
       // If starts with /, it's a relative path - add backend base URL
-      const baseUrl = process.env.REACT_APP_API_URL 
-        ? process.env.REACT_APP_API_URL.replace('/api', '') 
+      const baseUrl = process.env.REACT_APP_API_URL
+        ? process.env.REACT_APP_API_URL.replace('/api', '')
         : `http://${window.location.hostname}:5000`;
-      return imageUrl.startsWith('/') 
-        ? `${baseUrl}${imageUrl}` 
+      return imageUrl.startsWith('/')
+        ? `${baseUrl}${imageUrl}`
         : `${baseUrl}/${imageUrl}`;
     };
 
     // Ensure imageUrl is included in the area object with full URL
     const rawImageUrl = area.imageUrl || area.ImageUrl || area.image_url || '';
     const fullImageUrl = getImageFullUrl(rawImageUrl);
-    
+
     const areaWithImage = {
       ...area,
       imageUrl: fullImageUrl,
     };
-    
+
     // Debug: Log area data
     if (process.env.NODE_ENV === 'development') {
       console.log('handleAreaClick - area:', area);
@@ -502,14 +502,14 @@ const DashboardPage: React.FC = () => {
     const avgScore = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
     const openActions = areaAudits.reduce((sum, a) => sum + (a.open_actions || 0), 0);
     const totalActions = areaAudits.reduce((sum, a) => sum + (a.total_actions || 0), 0);
-    
+
     let level = 'Başlangıç';
     if (avgScore >= 90) level = '5S';
     else if (avgScore >= 70) level = '4S';
     else if (avgScore >= 50) level = '3S';
     else if (avgScore >= 30) level = '2S';
     else if (avgScore >= 10) level = '1S';
-    
+
     return { totalAudits, avgScore, level, openActions, totalActions };
   };
 
@@ -543,15 +543,15 @@ const DashboardPage: React.FC = () => {
                   {stat.icon}
                 </Avatar>
                 {stat.actionInfo && (
-                  <Chip 
-                    label={stat.actionInfo} 
-                    size="small" 
-                    sx={{ 
-                      fontSize: '0.625rem', 
+                  <Chip
+                    label={stat.actionInfo}
+                    size="small"
+                    sx={{
+                      fontSize: '0.625rem',
                       height: '16px',
                       bgcolor: stat.color + '20',
                       color: stat.color,
-                    }} 
+                    }}
                   />
                 )}
               </Box>
@@ -570,12 +570,12 @@ const DashboardPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent sx={{ p: 0 }}>
           {/* Map Header */}
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between', 
-              p: 2, 
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              p: 2,
               pb: 1,
               cursor: 'pointer',
               '&:hover': {
@@ -594,7 +594,7 @@ const DashboardPage: React.FC = () => {
               {isMapExpanded ? <ExpandLess /> : <ExpandMore />}
             </IconButton>
           </Box>
-          
+
           {/* Map Content */}
           <Collapse in={isMapExpanded}>
             <Box sx={{ p: 2, pt: 0 }}>
@@ -619,7 +619,7 @@ const DashboardPage: React.FC = () => {
                     ))}
                   </Select>
                 </FormControl>
-                
+
                 <FormControl size="small" sx={{ minWidth: 150 }}>
                   <InputLabel>Direktörlük</InputLabel>
                   <Select
@@ -632,9 +632,9 @@ const DashboardPage: React.FC = () => {
                   >
                     <MenuItem value="all">Tümü</MenuItem>
                     {directorates
-                      .filter((d: any) => 
-                        selectedSector === 'all' || 
-                        departments.some((dept: any) => 
+                      .filter((d: any) =>
+                        selectedSector === 'all' ||
+                        departments.some((dept: any) =>
                           (dept.sector || dept.Sector) === selectedSector &&
                           (dept.directorate || dept.Directorate) === d.name
                         )
@@ -646,7 +646,7 @@ const DashboardPage: React.FC = () => {
                       ))}
                   </Select>
                 </FormControl>
-                
+
                 <FormControl size="small" sx={{ minWidth: 150 }}>
                   <InputLabel>Bölüm</InputLabel>
                   <Select
@@ -669,11 +669,11 @@ const DashboardPage: React.FC = () => {
                   </Select>
                 </FormControl>
               </Box>
-              
+
               {/* Areas Grid - 6 columns, fixed size */}
-              <Box sx={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(6, 1fr)', 
+              <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(6, 1fr)',
                 gap: 2,
                 '@media (max-width: 1800px)': {
                   gridTemplateColumns: 'repeat(5, 1fr)',
@@ -785,17 +785,17 @@ const DashboardPage: React.FC = () => {
                                 }}
                               />
                             </Box>
-                            <LinearProgress 
-                              variant="determinate" 
-                              value={stats.avgScore} 
-                              sx={{ 
-                                height: 4, 
+                            <LinearProgress
+                              variant="determinate"
+                              value={stats.avgScore}
+                              sx={{
+                                height: 4,
                                 borderRadius: 2,
                                 bgcolor: 'rgba(255,255,255,0.2)',
                                 '& .MuiLinearProgress-bar': {
                                   bgcolor: 'white',
                                 }
-                              }} 
+                              }}
                             />
                           </Box>
                         </CardContent>
@@ -819,8 +819,8 @@ const DashboardPage: React.FC = () => {
                 <Typography variant="h6" sx={{ fontSize: '0.875rem', fontWeight: 600 }}>
                   Son Denetimler
                 </Typography>
-                <Button 
-                  size="small" 
+                <Button
+                  size="small"
                   endIcon={<ArrowForward fontSize="small" />}
                   onClick={() => navigate('/audits')}
                   sx={{ fontSize: '0.6875rem' }}
@@ -874,18 +874,18 @@ const DashboardPage: React.FC = () => {
                           <TableCell sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <Typography sx={{ fontSize: '0.75rem', fontWeight: 600 }}>%{audit.score}</Typography>
-                              <LinearProgress 
-                                variant="determinate" 
-                                value={audit.score} 
-                                sx={{ 
-                                  flex: 1, 
-                                  height: 6, 
+                              <LinearProgress
+                                variant="determinate"
+                                value={audit.score}
+                                sx={{
+                                  flex: 1,
+                                  height: 6,
                                   borderRadius: 3,
                                   bgcolor: 'grey.200',
                                   '& .MuiLinearProgress-bar': {
                                     bgcolor: audit.score >= 90 ? '#10b981' : audit.score >= 70 ? '#3b82f6' : audit.score >= 50 ? '#f59e0b' : '#ef4444'
                                   }
-                                }} 
+                                }}
                               />
                             </Box>
                           </TableCell>
@@ -935,9 +935,9 @@ const DashboardPage: React.FC = () => {
                   Duyurular
                 </Typography>
                 {announcements.some(a => new Date(a.announcementDate) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) && (
-                  <Chip 
-                    label="Yeni" 
-                    size="small" 
+                  <Chip
+                    label="Yeni"
+                    size="small"
                     color="error"
                     sx={{ fontSize: '0.625rem', height: '18px' }}
                   />
@@ -954,7 +954,7 @@ const DashboardPage: React.FC = () => {
                   announcements.map((announcement) => {
                     const announcementDate = new Date(announcement.announcementDate);
                     const isNew = announcementDate >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Son 7 gün
-                    
+
                     return (
                       <Box
                         key={announcement.id}
@@ -982,19 +982,19 @@ const DashboardPage: React.FC = () => {
                                 {announcement.title}
                               </Typography>
                               {isNew && (
-                                <Chip 
-                                  label="Yeni" 
-                                  size="small" 
+                                <Chip
+                                  label="Yeni"
+                                  size="small"
                                   color="error"
                                   sx={{ fontSize: '0.5rem', height: '14px', ml: 'auto' }}
                                 />
                               )}
                             </Box>
-                            <Typography 
-                              variant="caption" 
-                              color="text.secondary" 
-                              sx={{ 
-                                fontSize: '0.625rem', 
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                fontSize: '0.625rem',
                                 mb: 0.5,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -1137,42 +1137,42 @@ const DashboardPage: React.FC = () => {
           </Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(5, 1fr)' }, gap: 3 }}>
             {[
-              { 
-                title: '1S - Seiri', 
+              {
+                title: '1S - Seiri',
                 desc: 'Ayırt etme ve gereksizleri kaldırma',
                 detail: 'İş yerindeki gereksiz eşya ve malzemeleri ayırt edip kaldırmak. Sadece gerekli olanları tutmak.',
                 color: '#ef4444'
               },
-              { 
-                title: '2S - Seiton', 
+              {
+                title: '2S - Seiton',
                 desc: 'Düzenleme ve yerleştirme',
                 detail: 'Her şeyin belirli bir yeri olmalı ve her şey yerli yerinde olmalı. Hızlı erişim ve verimlilik sağlar.',
                 color: '#f59e0b'
               },
-              { 
-                title: '3S - Seiso', 
+              {
+                title: '3S - Seiso',
                 desc: 'Temizlik ve bakım',
                 detail: 'Çalışma alanını temiz tutmak ve düzenli bakım yapmak. Temizlik, kalite ve güvenliğin temelidir.',
                 color: '#3b82f6'
               },
-              { 
-                title: '4S - Seiketsu', 
+              {
+                title: '4S - Seiketsu',
                 desc: 'Standartlaştırma',
                 detail: 'İlk üç S\'in standartlaştırılması. Sürekli iyileştirme ve tutarlılık sağlamak.',
                 color: '#8b5cf6'
               },
-              { 
-                title: '5S - Shitsuke', 
+              {
+                title: '5S - Shitsuke',
                 desc: 'Sürdürme ve disiplin',
                 detail: '5S uygulamalarını sürekli hale getirmek ve disiplin içinde uygulamak. Kültür haline getirmek.',
                 color: '#10b981'
               },
             ].map((item, index) => (
-              <Box 
-                key={index} 
-                sx={{ 
-                  p: 2, 
-                  bgcolor: 'rgba(255, 255, 255, 0.1)', 
+              <Box
+                key={index}
+                sx={{
+                  p: 2,
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
                   borderRadius: 2,
                   backdropFilter: 'blur(10px)',
                   border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -1221,7 +1221,7 @@ const DashboardPage: React.FC = () => {
             const stats = getAreaStats(selectedArea.id || selectedArea.Id);
             const areaAudits = audits.filter(a => (a.area_id) === (selectedArea.id || selectedArea.Id));
             const areaImageUrl = selectedArea.imageUrl || selectedArea.ImageUrl || selectedArea.image_url || '';
-            
+
             return (
               <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, mt: 0, alignItems: 'flex-start' }}>
                 {/* Sol Taraf - Görsel */}
@@ -1351,7 +1351,7 @@ const DashboardPage: React.FC = () => {
                       </Card>
                     </Box>
                   </Box>
-                  
+
                   {/* Denetimler Tablosu */}
                   <Typography variant="h6" sx={{ fontSize: '0.875rem', fontWeight: 600, mb: 2 }}>
                     Denetimler
@@ -1425,8 +1425,8 @@ const DashboardPage: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setAreaDialogOpen(false)}>Kapat</Button>
           {selectedArea && (
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               onClick={() => {
                 navigate(`/audits?area=${selectedArea.id || selectedArea.Id}`);
                 setAreaDialogOpen(false);
@@ -1439,10 +1439,10 @@ const DashboardPage: React.FC = () => {
       </Dialog>
 
       {/* Image Zoom Dialog */}
-      <Dialog 
-        open={imageZoomOpen} 
-        onClose={() => setImageZoomOpen(false)} 
-        maxWidth="lg" 
+      <Dialog
+        open={imageZoomOpen}
+        onClose={() => setImageZoomOpen(false)}
+        maxWidth="lg"
         fullWidth
         PaperProps={{
           sx: {

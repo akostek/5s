@@ -12,6 +12,7 @@ namespace Domain.Entities
         public ActionStatus StatusTo { get; set; }
         public string? ChangedBy { get; set; } // Username or User ID
         public string? Comment { get; set; }
+        public string? EvidenceImagePath { get; set; } // Kanıt görseli
         
         [ForeignKey("ActionId")]
         public virtual Action Action { get; set; } = null!;

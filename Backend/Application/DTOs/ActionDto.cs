@@ -14,17 +14,20 @@ namespace Application.DTOs
         public int? DirectorateId { get; set; }
         public string? DirectorateName { get; set; }
         public string? ImagePath { get; set; }
+        public string? EvidenceImagePath { get; set; } // Kanıt görseli
         public string? Description { get; set; }
         public string? SuggestedActivity { get; set; }
         public string? PlannedActivity { get; set; }
         public DateTime? TargetDate { get; set; }
         public string? ResponsiblePerson { get; set; }
         public ActionStatus Status { get; set; }
+        public string? StatusText { get; set; } // Turkish status label from database
         public string? Priority { get; set; }
         public string? QuestionText { get; set; }
         public string? CategoryName { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+        public List<ActionImageDto>? Images { get; set; }
     }
 }
 

@@ -120,12 +120,16 @@ namespace Api.Controllers
             try
             {
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var action = await _actionService.ChangeStatusAsync(id, dto.Status, dto.Comment, userId);
+                var action = await _actionService.ChangeStatusAsync(id, dto.Status, dto.Comment, dto.ImageUrl, userId);
                 return Ok(action);
             }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {

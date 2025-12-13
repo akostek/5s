@@ -28,6 +28,7 @@ namespace Infrastructure.Data
         public DbSet<AuditResponse> AuditResponses { get; set; }
         public DbSet<Domain.Entities.Action> Actions { get; set; }
         public DbSet<ActionHistory> ActionHistories { get; set; }
+        public DbSet<ActionImage> ActionImages { get; set; }
         public DbSet<LevelThreshold> LevelThresholds { get; set; }
         public DbSet<Setting> Settings { get; set; }
         public DbSet<Permission> Permissions { get; set; }
@@ -54,6 +55,7 @@ namespace Infrastructure.Data
             modelBuilder.ApplyConfiguration(new SettingEntityConfiguration());
             modelBuilder.ApplyConfiguration(new PermissionEntityConfiguration());
             modelBuilder.ApplyConfiguration(new ActionHistoryEntityConfiguration());
+            modelBuilder.ApplyConfiguration(new ActionImageEntityConfiguration());
             modelBuilder.ApplyConfiguration(new AnnouncementEntityConfiguration());
 
             // Seed default data

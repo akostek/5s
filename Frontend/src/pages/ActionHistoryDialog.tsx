@@ -33,17 +33,24 @@ const getStatusLabel = (status: string | number) => {
     switch (s) {
         case 'open':
         case '0':
-            return 'Alan Sorumlusunda';
+        case 'açık':
+        case 'aksiyon sahibinde':
+            return 'Aksiyon Sahibinde';
         case 'pending_approval':
         case 'pendingapproval':
-        case '3': // Assuming enum value for PendingApproval
+        case '2':
+        case 'denetçi onayı bekliyor':
+        case 'denetçi kontrolünde':
             return 'Denetçi Kontrolünde';
         case 'completed':
         case 'closed':
-        case '2':
+        case '3':
+        case 'tamamlandı':
+        case 'kapandı':
             return 'Kapandı';
         case 'in_progress':
         case '1':
+        case 'devam ediyor':
             return 'Devam Ediyor';
         default:
             return s;
