@@ -9,12 +9,12 @@ namespace Application.Services
     public class ActionService : IActionService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IMailService _mailService;
+        private readonly IActionNotificationService _notificationService;
 
-        public ActionService(IUnitOfWork unitOfWork, IMailService mailService)
+        public ActionService(IUnitOfWork unitOfWork, IActionNotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
-            _mailService = mailService;
+            _notificationService = notificationService;
         }
 
         public async Task<ActionDto?> GetActionByIdAsync(int id)
@@ -159,11 +159,15 @@ namespace Application.Services
                 await actionsRepo.AddAsync(action);
                 await _unitOfWork.SaveChangesAsync();
 
-                // Send email notification defined by business rules
-                // New Action -> Notify Responsible Person
-                await SendEmailNotification(action.Id, "Yeni Aksiyon Atandı",
-                    $"Size yeni bir aksiyon atandı.<br>Aksiyon ID: {action.Id}<br>Açıklama: {action.Description}<br>Hedef Tarih: {action.TargetDate}",
-                    isStatusChange: false);
+                // Load navigation properties for notification
+                var fullAction = await actionsRepo.GetQueryable()
+                    .Include(a => a.ResponsiblePerson)
+                    .FirstOrDefaultAsync(a => a.Id == action.Id);
+
+                if (fullAction != null)
+                {
+                    await _notificationService.NotifyActionCreatedAsync(fullAction);
+                }
 
                 return (await GetActionByIdAsync(action.Id))!;
             }
@@ -326,45 +330,17 @@ namespace Application.Services
             
             await _unitOfWork.SaveChangesAsync();
 
-            // Define email rules based on status change
-            string subject = "";
-            bool sendToAuditor = false;
-            bool sendToResponsible = false;
-            bool ccAuditor = false;
-            bool ccResponsible = false;
-
-            // Determine status transition
-            // Note: We don't have the OLD status here unless we query it before updates, but we can infer intent from the NEW status
+            // Notify via NotificationService
+            // Load necessary navigation properties
+            var fullAction = await actionsRepo.GetQueryable()
+                .Include(a => a.ResponsiblePerson)
+                .Include(a => a.Audit)
+                    .ThenInclude(au => au.Auditor)
+                .FirstOrDefaultAsync(a => a.Id == id);
             
-            if (newStatus == ActionStatus.PendingApproval) // "Denetçiye Gönder" logic
+            if (fullAction != null)
             {
-                subject = "Aksiyon Onayınıza Sunuldu";
-                sendToAuditor = true;       // To: Denetçi
-                ccResponsible = true;       // CC: Alan Sorumlusu
-            }
-            else if (newStatus == ActionStatus.Open) // "Revizyon İstendi" logic (assuming Open comes from PendingApproval) or generic Open
-            {
-                // If this is a reopening/revision
-                subject = "Aksiyon İçin Revizyon İstendi";
-                sendToResponsible = true;   // To: Alan Sorumlusu
-                ccAuditor = true;           // CC: Denetçi
-            }
-            else if (newStatus == ActionStatus.Closed) // "Tamamlandı" logic
-            {
-                subject = "Aksiyon Tamamlandı/Kapatıldı";
-                sendToResponsible = true;   // To: Alan Sorumlusu
-                ccAuditor = true;           // CC: Denetçi
-            }
-
-            if (!string.IsNullOrEmpty(subject))
-            {
-                 await SendEmailNotification(id, subject, 
-                     $"Aksiyon durumu güncellendi: {newStatus}<br>Aksiyon ID: {id}", 
-                     isStatusChange: true,
-                     toAuditor: sendToAuditor,
-                     toResponsible: sendToResponsible,
-                     ccAuditor: ccAuditor,
-                     ccResponsible: ccResponsible);
+                await _notificationService.NotifyStatusChangedAsync(fullAction, newStatus, comment, userId);
             }
 
             return (await GetActionByIdAsync(id))!;
@@ -390,69 +366,6 @@ namespace Application.Services
                 h.CreatedAt,
                 h.EvidenceImagePath
             });
-        }
-
-        private async Task SendEmailNotification(int actionId, string subject, string body, 
-            bool isStatusChange = false,
-            bool toAuditor = false, 
-            bool toResponsible = false,
-            bool ccAuditor = false,
-            bool ccResponsible = false)
-        {
-            try 
-            {
-                var actionRepo = _unitOfWork.Repository<Domain.Entities.Action>();
-                var action = await actionRepo.GetQueryable()
-                    .Include(a => a.ResponsiblePerson)
-                    .Include(a => a.Audit)
-                        .ThenInclude(au => au.Auditor)
-                    .FirstOrDefaultAsync(a => a.Id == actionId);
-
-                if (action == null) return;
-
-                var responsibleEmail = action.ResponsiblePerson?.Email;
-                var auditorEmail = action.Audit?.Auditor?.Email;
-
-                // Determine recipients
-                string to = "";
-                string cc = "";
-
-                // Default logic for Create Action (if not status change rules)
-                if (!isStatusChange)
-                {
-                    to = responsibleEmail ?? "";
-                    // No default CC for creation unless requested
-                }
-                else
-                {
-                    // Apply Status Change Rules
-                    var toList = new List<string>();
-                    var ccList = new List<string>();
-
-                    if (toAuditor && !string.IsNullOrEmpty(auditorEmail)) toList.Add(auditorEmail);
-                    if (toResponsible && !string.IsNullOrEmpty(responsibleEmail)) toList.Add(responsibleEmail);
-
-                    if (ccAuditor && !string.IsNullOrEmpty(auditorEmail)) ccList.Add(auditorEmail);
-                    if (ccResponsible && !string.IsNullOrEmpty(responsibleEmail)) ccList.Add(responsibleEmail);
-
-                    // Join lists
-                    to = string.Join(";", toList);
-                    cc = string.Join(";", ccList);
-                }
-
-                if (!string.IsNullOrEmpty(to))
-                {
-                   await _mailService.SendEmailAsync(to, subject, body, cc);
-                }
-                else
-                {
-                   System.Console.WriteLine($"[Warning] No TO email recipients found for action {actionId}. Responsible: {responsibleEmail}, Auditor: {auditorEmail}");
-                }
-            }
-            catch(Exception ex) 
-            {
-                System.Console.WriteLine($"[Error] Failed to send email: {ex.Message}");
-            }
         }
 
         private ActionDto MapToActionDto(Domain.Entities.Action action)
@@ -501,6 +414,8 @@ namespace Application.Services
         }
     }
 }
+
+
 
 
 

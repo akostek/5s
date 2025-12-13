@@ -69,6 +69,7 @@ builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<QuestionService>();
 builder.Services.AddScoped<AuditResponseService>();
 builder.Services.AddScoped<IActionService, ActionService>();
+builder.Services.AddScoped<IActionNotificationService, ActionNotificationService>();
 builder.Services.AddScoped<ISectorService, SectorService>();
 builder.Services.AddScoped<IDirectorateService, DirectorateService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
