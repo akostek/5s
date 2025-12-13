@@ -44,12 +44,15 @@ const NewAuditPage: React.FC = () => {
   const [questionImages, setQuestionImages] = useState<Map<number, string[]>>(new Map());
   const [actionImages, setActionImages] = useState<Map<string, string[]>>(new Map()); // key: "questionId-actionIndex"
 
+
+
   interface ActionFormData {
     id?: number; // ID of existing action, undefined for new actions
     identified_non_conformity: string;
     proposed_activity: string;
     planned_activity: string;
-    responsible_person: string;
+    responsible_person_id: number | ''; // Store ID
+    responsible_person_name?: string; // Store name for display if needed
     target_date: string;
     priority: 'Düşük' | 'Orta' | 'Yüksek';
   }
@@ -91,7 +94,7 @@ const NewAuditPage: React.FC = () => {
         existingResponses.forEach((r: any) => {
           // Map backend enum to frontend string
           const responseValue = r.response || r.Response;
-          const questionId = r.questionId || r.QuestionId;
+          const questionId = Number(r.questionId || r.QuestionId);
           if (responseValue === 'High' || responseValue === 'Medium' || responseValue === 'Low') {
             responsesMap.set(questionId, responseValue);
           } else if (responseValue === 0 || responseValue === '0') {
@@ -176,7 +179,9 @@ const NewAuditPage: React.FC = () => {
             // Frontend uses snake_case (suggested_activity, planned_activity, etc.)
             const suggestedActivity = action.suggestedActivity || action.suggested_activity || '';
             const plannedActivity = action.plannedActivity || action.planned_activity || '';
-            const responsiblePerson = action.responsiblePerson || action.responsible_person || areaSupervisor || '';
+            const responsiblePersonId = action.responsiblePersonId || (action.responsiblePersonUser?.id || '');
+            const responsiblePersonName = action.responsiblePersonName || action.responsiblePerson || '';
+
             const targetDate = action.targetDate || action.target_date;
             const targetDateStr = targetDate ? (typeof targetDate === 'string' ? targetDate : targetDate.toString()).split('T')[0] : '';
 
@@ -185,7 +190,8 @@ const NewAuditPage: React.FC = () => {
               identified_non_conformity: action.description || action.identified_non_conformity || '',
               proposed_activity: suggestedActivity,
               planned_activity: plannedActivity,
-              responsible_person: responsiblePerson,
+              responsible_person_id: responsiblePersonId,
+              responsible_person_name: responsiblePersonName,
               target_date: targetDateStr,
               priority: (action.priority === 'Düşük' || action.priority === 'Orta' || action.priority === 'Yüksek')
                 ? action.priority
@@ -201,12 +207,24 @@ const NewAuditPage: React.FC = () => {
         setActionForms(actionsMap);
         setActionImages(actionImagesMap);
 
-        // If actions exist for a question but response is not set, ensure response is set to Low or Medium
-        // This ensures action forms are visible when page loads
+        // If actions exist for a question but response is not set, ensure response is set to Low (default for actions)
         actionsMap.forEach((actions, questionId) => {
           if (actions.length > 0 && !responsesMap.has(questionId)) {
-            // If question has actions but no response, set response to Low (default for actions)
             responsesMap.set(questionId, 'Low');
+          }
+        });
+
+        // Ensure action forms exist for Low/Medium responses
+        responsesMap.forEach((response, questionId) => {
+          if ((response === 'Low' || response === 'Medium') && !actionsMap.has(questionId)) {
+            actionsMap.set(questionId, [{
+              identified_non_conformity: '',
+              proposed_activity: '',
+              planned_activity: '',
+              responsible_person_id: '',
+              target_date: '',
+              priority: 'Orta',
+            }]);
           }
         });
 
@@ -267,7 +285,7 @@ const NewAuditPage: React.FC = () => {
         identified_non_conformity: '',
         proposed_activity: '',
         planned_activity: '',
-        responsible_person: auditInfo?.areaSupervisor || '',
+        responsible_person_id: '', // Default empty
         target_date: '',
         priority: 'Orta',
       }]);
@@ -288,7 +306,7 @@ const NewAuditPage: React.FC = () => {
       identified_non_conformity: '',
       proposed_activity: '',
       planned_activity: '',
-      responsible_person: auditInfo?.areaSupervisor || '',
+      responsible_person_id: '',
       target_date: '',
       priority: 'Orta',
     }]);
@@ -308,7 +326,7 @@ const NewAuditPage: React.FC = () => {
     setActionForms(newActionForms);
   };
 
-  const handleActionFieldChange = (actionIndex: number, field: keyof ActionFormData, value: string) => {
+  const handleActionFieldChange = (actionIndex: number, field: keyof ActionFormData, value: any) => {
     if (!currentQuestion) return;
     const newActionForms = new Map(actionForms);
     const currentActions = [...(newActionForms.get(currentQuestion.id) || [])];
@@ -429,8 +447,15 @@ const NewAuditPage: React.FC = () => {
         }
         for (let i = 0; i < actions.length; i++) {
           const action = actions[i];
-          if (!action.identified_non_conformity || !action.proposed_activity || !action.planned_activity || !action.responsible_person || !action.target_date) {
-            setError(`"${questions.find(q => q.id === questionId)?.text || 'Soru'}" için Aksiyon ${i + 1} alanlarının tümü doldurulmalıdır`);
+          const missingFields: string[] = [];
+          if (!action.identified_non_conformity) missingFields.push('Uygunsuzluk Tespiti');
+          if (!action.proposed_activity) missingFields.push('Önerilen Faaliyet');
+          if (!action.planned_activity) missingFields.push('Planlanan Faaliyet');
+          if (action.responsible_person_id === '' || action.responsible_person_id === null || action.responsible_person_id === undefined) missingFields.push('Sorumlu Kişi');
+          if (!action.target_date) missingFields.push('Hedef Tarih');
+
+          if (missingFields.length > 0) {
+            setError(`"${questions.find(q => q.id === questionId)?.text || 'Soru'}" için Aksiyon ${i + 1} eksik alanlar: ${missingFields.join(', ')}`);
             return;
           }
         }
@@ -482,7 +507,8 @@ const NewAuditPage: React.FC = () => {
                   description: action.identified_non_conformity,
                   suggestedActivity: action.proposed_activity,
                   plannedActivity: action.planned_activity,
-                  responsiblePerson: action.responsible_person,
+                  responsiblePersonId: Number(action.responsible_person_id),
+                  responsiblePerson: action.responsible_person_name, // Optional fallback
                   targetDate: targetDateISO,
                   imageUrls: actionImagesList.length > 0 ? actionImagesList : undefined,
                 });
@@ -494,7 +520,8 @@ const NewAuditPage: React.FC = () => {
                   description: action.identified_non_conformity,
                   suggestedActivity: action.proposed_activity,
                   plannedActivity: action.planned_activity,
-                  responsiblePerson: action.responsible_person,
+                  responsiblePersonId: Number(action.responsible_person_id),
+                  responsiblePerson: action.responsible_person_name, // Optional fallback
                   targetDate: targetDateISO,
                   imageUrls: actionImagesList.length > 0 ? actionImagesList : undefined,
                 });
@@ -815,14 +842,20 @@ const NewAuditPage: React.FC = () => {
                         onChange={(e) => handleActionFieldChange(actionIndex, 'planned_activity', e.target.value)}
                         required
                       />
-                      <TextField
-                        label="Sorumlu Kişi"
-                        fullWidth
-                        size="small"
-                        value={action.responsible_person}
-                        onChange={(e) => handleActionFieldChange(actionIndex, 'responsible_person', e.target.value)}
-                        required
-                      />
+                      <FormControl fullWidth size="small" required>
+                        <InputLabel>Sorumlu Kişi</InputLabel>
+                        <Select
+                          value={action.responsible_person_id}
+                          label="Sorumlu Kişi"
+                          onChange={(e) => handleActionFieldChange(actionIndex, 'responsible_person_id', e.target.value)}
+                        >
+                          {users.map((user) => (
+                            <MenuItem key={user.id} value={user.id}>
+                              {user.name} {user.username ? `(${user.username})` : ''}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
                       <TextField
                         label="Hedef Tarih"
                         type="date"

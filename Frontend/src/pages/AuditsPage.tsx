@@ -204,7 +204,9 @@ const mapActionDtoToAction = (action: any): Action => {
     suggested_activity: action?.suggestedActivity ?? action?.suggested_activity ?? action?.SuggestedActivity ?? '',
     planned_activity: action?.plannedActivity ?? action?.planned_activity ?? action?.PlannedActivity ?? '',
     target_date: normalizeDateString(targetDate),
-    responsible_person: action?.responsiblePerson ?? action?.responsible_person ?? action?.ResponsiblePerson ?? '',
+    responsible_person_id: action?.responsiblePersonId ?? action?.responsible_person_id ?? action?.ResponsiblePersonId,
+    responsible_person_name: action?.responsiblePersonName ?? action?.responsible_person_name ?? action?.ResponsiblePersonName,
+    responsible_person: action?.responsiblePersonName ?? action?.responsiblePerson ?? action?.responsible_person ?? action?.ResponsiblePerson ?? '', // Use Name for display
     status: normalizeActionStatus(action?.status ?? action?.Status),
     priority: normalizedPriority,
     question_text: action?.questionText ?? action?.question_text ?? action?.QuestionText,
@@ -292,6 +294,7 @@ const AuditsPage: React.FC = () => {
 
   const [departments, setDepartments] = useState<any[]>([]);
   const [auditors, setAuditors] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]); // For responsible person dropdown
   const [questions, setQuestions] = useState<any[]>([]);
 
   // Action Workflow States
@@ -507,19 +510,23 @@ const AuditsPage: React.FC = () => {
   const [areas, setAreas] = useState<any[]>([]);
   const [areaSupervisors, setAreaSupervisors] = useState<any[]>([]);
 
-  // Load questions when edit dialog opens
+  // Load questions and users when edit dialog opens
   useEffect(() => {
-    const loadQuestions = async () => {
+    const loadEditData = async () => {
       if (editDialogOpen) {
         try {
-          const questionsData = await apiService.getQuestions();
+          const [questionsData, usersData] = await Promise.all([
+            apiService.getQuestions(),
+            apiService.getActiveUsers()
+          ]);
           setQuestions(questionsData || []);
+          setAllUsers(usersData || []);
         } catch (error) {
-          console.error('Error loading questions:', error);
+          console.error('Error loading edit data:', error);
         }
       }
     };
-    loadQuestions();
+    loadEditData();
   }, [editDialogOpen]);
 
   useEffect(() => {
@@ -962,7 +969,7 @@ const AuditsPage: React.FC = () => {
           alert('Lütfen bir soru seçin');
           return;
         }
-        if (!updatedAction.description || !updatedAction.suggested_activity || !updatedAction.planned_activity || !updatedAction.responsible_person || !updatedAction.target_date) {
+        if (!updatedAction.description || !updatedAction.suggested_activity || !updatedAction.planned_activity || !updatedAction.responsible_person_id || !updatedAction.target_date) {
           alert('Lütfen tüm alanları doldurun');
           return;
         }
@@ -973,7 +980,8 @@ const AuditsPage: React.FC = () => {
           description: updatedAction.description,
           suggestedActivity: updatedAction.suggested_activity,
           plannedActivity: updatedAction.planned_activity,
-          responsiblePerson: updatedAction.responsible_person,
+          responsiblePersonId: updatedAction.responsible_person_id,
+          responsiblePerson: updatedAction.responsible_person_name, // Fallback
           targetDate: updatedAction.target_date,
           priority: updatedAction.priority,
         });
@@ -993,7 +1001,8 @@ const AuditsPage: React.FC = () => {
           description: updatedAction.description,
           suggestedActivity: updatedAction.suggested_activity,
           plannedActivity: updatedAction.planned_activity,
-          responsiblePerson: updatedAction.responsible_person,
+          responsiblePersonId: updatedAction.responsible_person_id,
+          responsiblePerson: updatedAction.responsible_person_name, // Fallback
           targetDate: targetDateISO,
           status: updatedAction.status as 'open' | 'in_progress' | 'closed',
           priority: updatedAction.priority,
@@ -1945,36 +1954,7 @@ const AuditsPage: React.FC = () => {
 
                 <Divider sx={{ mb: 2 }} />
 
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                  {actionPermissions['Action_Create'] && (
-                    <Button
-                      variant="contained"
-                      startIcon={<Add />}
-                      size="small"
-                      sx={{ fontSize: '0.75rem' }}
-                      onClick={() => {
-                        if (selectedAudit) {
-                          setEditingAction({
-                            id: 0,
-                            audit_id: selectedAudit.id,
-                            question_id: 0,
-                            description: '',
-                            suggested_activity: '',
-                            planned_activity: '',
-                            responsible_person: selectedAudit.area_supervisor || '',
-                            target_date: undefined,
-                            status: 'open',
-                            priority: 'Orta',
-                            created_at: new Date().toISOString(),
-                          } as Action);
-                          setEditDialogOpen(true);
-                        }
-                      }}
-                    >
-                      Yeni Aksiyon Ekle
-                    </Button>
-                  )}
-                </Box>
+
 
                 {actionsError && (
                   <Alert severity="error" sx={{ mb: 2, fontSize: '0.8rem' }}>
@@ -2001,7 +1981,7 @@ const AuditsPage: React.FC = () => {
                           <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 80, p: 0.5 }}>Sorumlu</TableCell>
                           <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 65, p: 0.5 }}>Açılma</TableCell>
                           <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 65, p: 0.5 }}>Hedef</TableCell>
-                          <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 45, p: 0.5 }}>Açık</TableCell>
+
                           <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 50, p: 0.5 }}>Gecikme</TableCell>
                           <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 55, p: 0.5 }}>Görsel</TableCell>
                           <TableCell sx={{ fontWeight: 600, fontSize: '0.6rem', bgcolor: 'grey.100', minWidth: 55, p: 0.5 }}>Kanıt</TableCell>
@@ -2069,9 +2049,7 @@ const AuditsPage: React.FC = () => {
                               <TableCell sx={{ fontSize: '0.6rem', p: 0.5, color: delayDays > 0 ? 'error.main' : 'text.primary' }}>
                                 {action.target_date ? format(new Date(action.target_date), 'dd/MM/yy') : '-'}
                               </TableCell>
-                              <TableCell sx={{ fontSize: '0.6rem', p: 0.5, textAlign: 'center' }}>
-                                {daysOpen}
-                              </TableCell>
+
                               <TableCell sx={{ fontSize: '0.6rem', p: 0.5, textAlign: 'center', color: delayDays > 0 ? 'error.main' : 'text.secondary' }}>
                                 {delayDays > 0 ? delayDays : '-'}
                               </TableCell>
@@ -2241,33 +2219,7 @@ const AuditsPage: React.FC = () => {
             >
               Kapat
             </Button>
-            {actionPermissions['Action_Create'] && (
-              <Button
-                variant="contained"
-                size="small"
-                sx={{ fontSize: '0.7rem' }}
-                onClick={() => {
-                  if (selectedAudit) {
-                    setEditingAction({
-                      id: 0,
-                      audit_id: selectedAudit.id,
-                      question_id: 0,
-                      description: '',
-                      suggested_activity: '',
-                      planned_activity: '',
-                      responsible_person: selectedAudit.area_supervisor || '',
-                      target_date: undefined,
-                      status: 'open',
-                      priority: 'Orta',
-                      created_at: new Date().toISOString(),
-                    } as Action);
-                    setEditDialogOpen(true);
-                  }
-                }}
-              >
-                Yeni Aksiyon Ekle
-              </Button>
-            )}
+
           </DialogActions>
         </Dialog>
 
@@ -2535,19 +2487,31 @@ const AuditsPage: React.FC = () => {
                   size="small"
                   required
                 />
-                <TextField
-                  label="Sorumlu Kişi"
-                  value={editingAction.responsible_person || ''}
-                  onChange={(e) =>
-                    setEditingAction({
-                      ...editingAction,
-                      responsible_person: e.target.value || undefined,
-                    })
-                  }
-                  fullWidth
-                  size="small"
-                  required
-                />
+                <FormControl fullWidth size="small" required>
+                  <InputLabel>Sorumlu Kişi</InputLabel>
+                  <Select
+                    value={editingAction.responsible_person_id || ''}
+                    label="Sorumlu Kişi"
+                    onChange={(e) => {
+                      const selectedUser = allUsers.find(u => u.id === Number(e.target.value));
+                      setEditingAction({
+                        ...editingAction,
+                        responsible_person_id: Number(e.target.value),
+                        responsible_person_name: selectedUser ? `${selectedUser.name}`.trim() : '',
+                        responsible_person: selectedUser ? `${selectedUser.name}`.trim() : '',
+                      })
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>Seçiniz</em>
+                    </MenuItem>
+                    {allUsers.map((user) => (
+                      <MenuItem key={user.id} value={user.id}>
+                        {user.name} {user.username ? `(${user.username})` : ''}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
                 <TextField
                   label="Hedef Tarih"
                   type="date"

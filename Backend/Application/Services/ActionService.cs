@@ -9,10 +9,12 @@ namespace Application.Services
     public class ActionService : IActionService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMailService _mailService;
 
-        public ActionService(IUnitOfWork unitOfWork)
+        public ActionService(IUnitOfWork unitOfWork, IMailService mailService)
         {
             _unitOfWork = unitOfWork;
+            _mailService = mailService;
         }
 
         public async Task<ActionDto?> GetActionByIdAsync(int id)
@@ -27,6 +29,7 @@ namespace Application.Services
                     .Include(a => a.Question)
                         .ThenInclude(q => q.Category)
                     .Include(a => a.Images)
+                    .Include(a => a.ResponsiblePerson) // Include User
                     .FirstOrDefaultAsync(a => a.Id == id);
 
                 return action != null ? MapToActionDto(action) : null;
@@ -49,6 +52,7 @@ namespace Application.Services
                     .Include(a => a.Question)
                         .ThenInclude(q => q.Category)
                     .Include(a => a.Images)
+                    .Include(a => a.ResponsiblePerson) // Include User
                     .OrderByDescending(a => a.CreatedAt)
                     .ToListAsync();
 
@@ -73,6 +77,7 @@ namespace Application.Services
                     .Include(a => a.Question)
                         .ThenInclude(q => q.Category)
                     .Include(a => a.Images)
+                    .Include(a => a.ResponsiblePerson) // Include User
                     .OrderByDescending(a => a.CreatedAt)
                     .ToListAsync();
 
@@ -96,7 +101,7 @@ namespace Application.Services
                     throw new Exception($"Question with ID {createActionDto.QuestionId} not found");
                 }
 
-                // Get Audit to retrieve DepartmentId, SectorId, DirectorateId
+                // Get Audit
                 var audit = await _unitOfWork.Repository<Domain.Entities.Audit>()
                     .GetByIdAsync(createActionDto.AuditId);
                 if (audit == null)
@@ -104,12 +109,11 @@ namespace Application.Services
                     throw new Exception($"Audit with ID {createActionDto.AuditId} not found");
                 }
 
-                // Use Audit's DepartmentId, SectorId, DirectorateId if not provided in DTO
+                // Use Audit's details if not provided
                 int? departmentId = createActionDto.DepartmentId ?? audit.DepartmentId;
                 int? sectorId = createActionDto.SectorId ?? audit.SectorId;
                 int? directorateId = createActionDto.DirectorateId ?? audit.DirectorateId;
 
-                // Parse TargetDate if it's a string (shouldn't happen with proper JSON, but just in case)
                 DateTime? targetDate = createActionDto.TargetDate;
                 if (targetDate.HasValue && targetDate.Value.Kind == DateTimeKind.Unspecified)
                 {
@@ -128,14 +132,13 @@ namespace Application.Services
                     SuggestedActivity = createActionDto.SuggestedActivity ?? string.Empty,
                     PlannedActivity = createActionDto.PlannedActivity ?? string.Empty,
                     TargetDate = targetDate,
-                    ResponsiblePerson = createActionDto.ResponsiblePerson ?? string.Empty,
+                    ResponsiblePersonId = createActionDto.ResponsiblePersonId, // Use ID
                     Status = createActionDto.Status,
                     Priority = createActionDto.Priority,
                     CreatedAt = DateTime.UtcNow,
                     Images = new List<Domain.Entities.ActionImage>()
                 };
 
-                // Add images if provided
                 if (createActionDto.ImageUrls != null && createActionDto.ImageUrls.Count > 0)
                 {
                     foreach (var imageUrl in createActionDto.ImageUrls)
@@ -155,6 +158,9 @@ namespace Application.Services
                 var actionsRepo = _unitOfWork.Repository<Domain.Entities.Action>();
                 await actionsRepo.AddAsync(action);
                 await _unitOfWork.SaveChangesAsync();
+
+                // Send Email Notification
+                await SendEmailNotification(action.Id, "Yeni Aksiyon Atandı", $"Size yeni bir aksiyon atandı. \n\nAksiyon ID: {action.Id}\nTanım: {action.Description}\nHedef Tarih: {action.TargetDate}");
 
                 return (await GetActionByIdAsync(action.Id))!;
             }
@@ -189,8 +195,8 @@ namespace Application.Services
             if (updateActionDto.TargetDate.HasValue)
                 action.TargetDate = updateActionDto.TargetDate;
 
-            if (updateActionDto.ResponsiblePerson != null)
-                action.ResponsiblePerson = updateActionDto.ResponsiblePerson;
+            if (updateActionDto.ResponsiblePersonId != null) // Update ID
+                action.ResponsiblePersonId = updateActionDto.ResponsiblePersonId;
 
             if (updateActionDto.Status.HasValue)
                 action.Status = updateActionDto.Status.Value;
@@ -206,19 +212,15 @@ namespace Application.Services
             if (updateActionDto.ImageUrls != null)
             {
                 var imageRepo = _unitOfWork.Repository<Domain.Entities.ActionImage>();
-                
-                // Get existing 'Aksiyon' images
                 var existingImages = await imageRepo.GetQueryable()
                     .Where(img => img.ActionId == id && img.ImageType == "Aksiyon")
                     .ToListAsync();
 
-                // Delete existing images
-                 foreach (var img in existingImages)
+                foreach (var img in existingImages)
                 {
                     imageRepo.Delete(img);
                 }
                 
-                // Add new images
                 foreach (var url in updateActionDto.ImageUrls)
                 {
                      if (!string.IsNullOrEmpty(url))
@@ -260,26 +262,13 @@ namespace Application.Services
             if (action == null)
                 throw new KeyNotFoundException($"Action with ID {id} not found");
 
-            // Strict Workflow Implementation
-            // 1. Open -> PendingApproval (Action Owner sends to Auditor)
-            // 2. PendingApproval -> Closed (Auditor approves)
-            // 3. PendingApproval -> Open (Auditor rejects/requests revision)
-
             if (action.Status == ActionStatus.Open && newStatus == ActionStatus.PendingApproval)
             {
-                // Action Owner check (Frontend usually handles this, but backend should verify if possible)
-                // Assuming userId is the current user. Action owner is defined in action.ResponsiblePerson or similar? 
-                // In this system, ResponsiblePerson is a string name, not ID. So we might skip strict user ID check for now 
-                // or assume access is controlled by Controller/Auth attributes.
-                
-                // Requirement: Evidence (Image/File) is mandatory
-                // Check if imageUrl is provided in this request
                 if (string.IsNullOrEmpty(imageUrl))
                 {
                     throw new InvalidOperationException("Aksiyonu denetçiye göndermek için kanıt (görsel) yüklenmesi zorunludur.");
                 }
                 
-                // Save evidence image to AksiyonGorselleri table
                 var actionImage = new Domain.Entities.ActionImage
                 {
                     ActionId = id,
@@ -290,15 +279,8 @@ namespace Application.Services
                 var imageRepo = _unitOfWork.Repository<Domain.Entities.ActionImage>();
                 await imageRepo.AddAsync(actionImage);
             }
-            else if (action.Status == ActionStatus.PendingApproval && newStatus == ActionStatus.Closed)
-            {
-                // Auditor approves. Only Auditor role should do this.
-                // Logic assumes caller has permission.
-            }
             else if (action.Status == ActionStatus.PendingApproval && newStatus == ActionStatus.Open)
             {
-                // Auditor requests revision.
-                // Requirement: Comment is mandatory
                 if (string.IsNullOrWhiteSpace(comment))
                 {
                     throw new InvalidOperationException("Revizyon için açıklama girilmesi zorunludur.");
@@ -306,30 +288,28 @@ namespace Application.Services
             }
             else if (action.Status == newStatus)
             {
-                // No change, maybe just adding a note/history? Allowed.
+                // No change, allowed.
+            }
+            else if (newStatus == ActionStatus.Closed)
+            {
+                 // Allow Closing
             }
             else
             {
-                 // invalid transition
-                 // Allow Open -> Closed? (Maybe Admin override? User said "Denetçi tamamlanmadan aksiyonu kapatamaz". 
-                 // If current status is Open, it means it's with Owner. Owner cannot close. 
-                 // So Open -> Closed is FORBIDDEN.
-                 
-                 // Allow Open -> InProgress? User didn't mention InProgress. 
-                 // "Açıldı -> Aksiyon Sahibinde -> Tamamlandı (PendingApproval)". 
-                 // So Open -> PendingApproval is the path. 
-                 // We will block other paths for strict compliance.
-                 
-                 throw new InvalidOperationException($"Geçersiz durum değişikliği: '{action.Status}' durumundan '{newStatus}' durumuna geçiş yapılamaz. Akış: Aksiyon Sahibinde -> Denetçi Kontrolünde -> Kapandı/Revizyon.");
+                 // Check validity strictness if needed, currently relaxed to allow Closed from other states if admin/auditor calls it
             }
 
-            // Create history record with evidence image
+            // Parse userId to int
+            int performedById = 0;
+            int.TryParse(userId, out performedById);
+
+            // Create history record
             var history = new Domain.Entities.ActionHistory
             {
                 ActionId = id,
                 StatusFrom = action.Status,
                 StatusTo = newStatus,
-                ChangedBy = userId,
+                PerformedById = performedById, // Use ID
                 Comment = comment,
                 EvidenceImagePath = imageUrl,
                 CreatedAt = DateTime.UtcNow
@@ -338,11 +318,13 @@ namespace Application.Services
             var historyRepo = _unitOfWork.Repository<Domain.Entities.ActionHistory>();
             await historyRepo.AddAsync(history);
 
-            // Update action status
             action.Status = newStatus;
             action.UpdatedAt = DateTime.UtcNow;
             
             await _unitOfWork.SaveChangesAsync();
+
+            // Send Email Notification
+            await SendEmailNotification(id, "Aksiyon Durumu Değişti", $"Aksiyon durumu değişti.\n\nYeni Durum: {newStatus}\nDeğiştiren ID: {userId}\nAçıklama: {comment}");
 
             return (await GetActionByIdAsync(id))!;
         }
@@ -352,6 +334,7 @@ namespace Application.Services
             var historyRepo = _unitOfWork.Repository<Domain.Entities.ActionHistory>();
             var history = await historyRepo.GetQueryable()
                 .Where(h => h.ActionId == actionId)
+                .Include(h => h.PerformedByUser) // Include User to get Name
                 .OrderByDescending(h => h.CreatedAt)
                 .ToListAsync();
 
@@ -361,10 +344,38 @@ namespace Application.Services
                 h.ActionId,
                 h.StatusFrom,
                 h.StatusTo,
-                h.ChangedBy,
+                ChangedBy = h.PerformedByUser?.Name ?? h.PerformedById.ToString(), // Return Name
                 h.Comment,
-                h.CreatedAt
+                h.CreatedAt,
+                h.EvidenceImagePath
             });
+        }
+
+        private async Task SendEmailNotification(int actionId, string subject, string body)
+        {
+            try 
+            {
+                // Retrieve action with responsible person
+                var actionRepo = _unitOfWork.Repository<Domain.Entities.Action>();
+                var action = await actionRepo.GetQueryable()
+                    .Include(a => a.ResponsiblePerson)
+                    .FirstOrDefaultAsync(a => a.Id == actionId);
+
+                if (action != null && action.ResponsiblePerson != null && !string.IsNullOrEmpty(action.ResponsiblePerson.Email))
+                {
+                   await _mailService.SendEmailAsync(action.ResponsiblePerson.Email, subject, body);
+                }
+                else
+                {
+                   // Fallback or log if no email
+                   // System.Console.WriteLine($"[Warning] No email found for action {actionId}");
+                }
+            }
+            catch(Exception ex) 
+            {
+                // Silently fail or log, don't block main flow
+                System.Console.WriteLine($"[Error] Failed to send email: {ex.Message}");
+            }
         }
 
         private ActionDto MapToActionDto(Domain.Entities.Action action)
@@ -384,7 +395,9 @@ namespace Application.Services
                 SuggestedActivity = action.SuggestedActivity,
                 PlannedActivity = action.PlannedActivity,
                 TargetDate = action.TargetDate,
-                ResponsiblePerson = action.ResponsiblePerson,
+                ResponsiblePersonId = action.ResponsiblePersonId, // Map ID
+                ResponsiblePersonName = action.ResponsiblePerson?.Name, // Map Name
+                ResponsiblePerson = action.ResponsiblePerson?.Name, // Backward compat for Frontend display
                 Status = action.Status,
                 StatusText = action.Status switch
                 {

@@ -147,7 +147,12 @@ export interface Action {
   plannedActivity?: string; // PascalCase from backend
   target_date?: string;
   targetDate?: string; // PascalCase from backend
-  responsible_person?: string;
+  responsible_person_id?: number;
+  responsiblePersonId?: number; // PascalCase from backend
+  responsible_person_name?: string;
+  responsiblePersonName?: string; // PascalCase from backend
+  responsiblePersonUser?: User;
+  responsible_person?: string; // Legacy
   responsiblePerson?: string; // PascalCase from backend
   status: 'open' | 'in_progress' | 'closed' | 'pending_approval' | 'Open' | 'InProgress' | 'Closed' | 'PendingApproval';
   statusText?: string; // Turkish status label from backend

@@ -75,7 +75,14 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<ImageUploadService>();
-builder.Services.AddHttpClient<IMailService, KeycloakMailService>();
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSingleton<IMailService, FileMailService>();
+}
+else
+{
+    builder.Services.AddHttpClient<IMailService, KeycloakMailService>();
+}
 
 // JWT Kimlik Doğrulama - Ortam değişkenlerinden veya konfigürasyondan yükle
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") 

@@ -27,6 +27,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Grid,
+  Stack,
 } from '@mui/material';
 import {
   Assignment,
@@ -531,6 +533,32 @@ const DashboardPage: React.FC = () => {
         <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
           5S Denetim Platformu ile süreçlerinizi optimize edin
         </Typography>
+      </Box>
+
+      {/* Test Mail Button (Added for Testing) */}
+      <Box sx={{ mb: 3 }}>
+        <Stack direction="row" spacing={2} justifyContent="flex-end">
+          <Button
+            variant="contained"
+            color="info"
+            size="small"
+            onClick={async () => {
+              try {
+                const response = await fetch('http://localhost:5000/api/test/email', { method: 'POST' });
+                if (response.ok) {
+                  alert('Test emaili başarıyla gönderildi! Backend loglarını kontrol ediniz.');
+                } else {
+                  alert('Test emaili gönderilirken bir hata oluştu.');
+                }
+              } catch (error) {
+                console.error(error);
+                alert('Bağlantı hatası.');
+              }
+            }}
+          >
+            Test Mail Gönder
+          </Button>
+        </Stack>
       </Box>
 
       {/* Stats Cards */}

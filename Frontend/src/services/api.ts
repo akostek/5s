@@ -634,7 +634,8 @@ class ApiService {
     suggestedActivity?: string;
     plannedActivity?: string;
     targetDate?: string;
-    responsiblePerson?: string;
+    responsiblePersonId?: number; // Updated: expect ID
+    responsiblePerson?: string; // Keep for fallback/display if needed
     departmentId?: number;
     imageUrls?: string[];
     priority?: 'Düşük' | 'Orta' | 'Yüksek';
@@ -658,6 +659,7 @@ class ApiService {
     suggestedActivity?: string;
     plannedActivity?: string;
     targetDate?: string;
+    responsiblePersonId?: number; // Updated: expect ID
     responsiblePerson?: string;
     departmentId?: number;
     imageUrls?: string[];
