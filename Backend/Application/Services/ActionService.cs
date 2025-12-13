@@ -159,8 +159,11 @@ namespace Application.Services
                 await actionsRepo.AddAsync(action);
                 await _unitOfWork.SaveChangesAsync();
 
-                // Send Email Notification
-                await SendEmailNotification(action.Id, "Yeni Aksiyon Atandı", $"Size yeni bir aksiyon atandı. \n\nAksiyon ID: {action.Id}\nTanım: {action.Description}\nHedef Tarih: {action.TargetDate}");
+                // Send email notification defined by business rules
+                // New Action -> Notify Responsible Person
+                await SendEmailNotification(action.Id, "Yeni Aksiyon Atandı",
+                    $"Size yeni bir aksiyon atandı.<br>Aksiyon ID: {action.Id}<br>Açıklama: {action.Description}<br>Hedef Tarih: {action.TargetDate}",
+                    isStatusChange: false);
 
                 return (await GetActionByIdAsync(action.Id))!;
             }
@@ -323,8 +326,46 @@ namespace Application.Services
             
             await _unitOfWork.SaveChangesAsync();
 
-            // Send Email Notification
-            await SendEmailNotification(id, "Aksiyon Durumu Değişti", $"Aksiyon durumu değişti.\n\nYeni Durum: {newStatus}\nDeğiştiren ID: {userId}\nAçıklama: {comment}");
+            // Define email rules based on status change
+            string subject = "";
+            bool sendToAuditor = false;
+            bool sendToResponsible = false;
+            bool ccAuditor = false;
+            bool ccResponsible = false;
+
+            // Determine status transition
+            // Note: We don't have the OLD status here unless we query it before updates, but we can infer intent from the NEW status
+            
+            if (newStatus == ActionStatus.PendingApproval) // "Denetçiye Gönder" logic
+            {
+                subject = "Aksiyon Onayınıza Sunuldu";
+                sendToAuditor = true;       // To: Denetçi
+                ccResponsible = true;       // CC: Alan Sorumlusu
+            }
+            else if (newStatus == ActionStatus.Open) // "Revizyon İstendi" logic (assuming Open comes from PendingApproval) or generic Open
+            {
+                // If this is a reopening/revision
+                subject = "Aksiyon İçin Revizyon İstendi";
+                sendToResponsible = true;   // To: Alan Sorumlusu
+                ccAuditor = true;           // CC: Denetçi
+            }
+            else if (newStatus == ActionStatus.Closed) // "Tamamlandı" logic
+            {
+                subject = "Aksiyon Tamamlandı/Kapatıldı";
+                sendToResponsible = true;   // To: Alan Sorumlusu
+                ccAuditor = true;           // CC: Denetçi
+            }
+
+            if (!string.IsNullOrEmpty(subject))
+            {
+                 await SendEmailNotification(id, subject, 
+                     $"Aksiyon durumu güncellendi: {newStatus}<br>Aksiyon ID: {id}", 
+                     isStatusChange: true,
+                     toAuditor: sendToAuditor,
+                     toResponsible: sendToResponsible,
+                     ccAuditor: ccAuditor,
+                     ccResponsible: ccResponsible);
+            }
 
             return (await GetActionByIdAsync(id))!;
         }
@@ -351,29 +392,65 @@ namespace Application.Services
             });
         }
 
-        private async Task SendEmailNotification(int actionId, string subject, string body)
+        private async Task SendEmailNotification(int actionId, string subject, string body, 
+            bool isStatusChange = false,
+            bool toAuditor = false, 
+            bool toResponsible = false,
+            bool ccAuditor = false,
+            bool ccResponsible = false)
         {
             try 
             {
-                // Retrieve action with responsible person
                 var actionRepo = _unitOfWork.Repository<Domain.Entities.Action>();
                 var action = await actionRepo.GetQueryable()
                     .Include(a => a.ResponsiblePerson)
+                    .Include(a => a.Audit)
+                        .ThenInclude(au => au.Auditor)
                     .FirstOrDefaultAsync(a => a.Id == actionId);
 
-                if (action != null && action.ResponsiblePerson != null && !string.IsNullOrEmpty(action.ResponsiblePerson.Email))
+                if (action == null) return;
+
+                var responsibleEmail = action.ResponsiblePerson?.Email;
+                var auditorEmail = action.Audit?.Auditor?.Email;
+
+                // Determine recipients
+                string to = "";
+                string cc = "";
+
+                // Default logic for Create Action (if not status change rules)
+                if (!isStatusChange)
                 {
-                   await _mailService.SendEmailAsync(action.ResponsiblePerson.Email, subject, body);
+                    to = responsibleEmail ?? "";
+                    // No default CC for creation unless requested
                 }
                 else
                 {
-                   // Fallback or log if no email
-                   // System.Console.WriteLine($"[Warning] No email found for action {actionId}");
+                    // Apply Status Change Rules
+                    var toList = new List<string>();
+                    var ccList = new List<string>();
+
+                    if (toAuditor && !string.IsNullOrEmpty(auditorEmail)) toList.Add(auditorEmail);
+                    if (toResponsible && !string.IsNullOrEmpty(responsibleEmail)) toList.Add(responsibleEmail);
+
+                    if (ccAuditor && !string.IsNullOrEmpty(auditorEmail)) ccList.Add(auditorEmail);
+                    if (ccResponsible && !string.IsNullOrEmpty(responsibleEmail)) ccList.Add(responsibleEmail);
+
+                    // Join lists
+                    to = string.Join(";", toList);
+                    cc = string.Join(";", ccList);
+                }
+
+                if (!string.IsNullOrEmpty(to))
+                {
+                   await _mailService.SendEmailAsync(to, subject, body, cc);
+                }
+                else
+                {
+                   System.Console.WriteLine($"[Warning] No TO email recipients found for action {actionId}. Responsible: {responsibleEmail}, Auditor: {auditorEmail}");
                 }
             }
             catch(Exception ex) 
             {
-                // Silently fail or log, don't block main flow
                 System.Console.WriteLine($"[Error] Failed to send email: {ex.Message}");
             }
         }
