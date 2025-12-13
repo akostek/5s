@@ -13,8 +13,6 @@ namespace Domain.Entities
         public int? DepartmentId { get; set; }
         public int? SectorId { get; set; }
         public int? DirectorateId { get; set; }
-        public string? ImagePath { get; set; }
-        public string? EvidenceImagePath { get; set; } // Kanıt görseli (Denetçiye Gönder'de yüklenen)
         public string? Description { get; set; }
         public string? SuggestedActivity { get; set; }
         public string? PlannedActivity { get; set; }

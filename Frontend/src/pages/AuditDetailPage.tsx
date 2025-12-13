@@ -56,6 +56,7 @@ const AuditDetailPage: React.FC = () => {
   const [imageDialog, setImageDialog] = useState<string | null>(null);
   const [questionImages, setQuestionImages] = useState<Map<number, string[]>>(new Map());
   const [actionImages, setActionImages] = useState<Map<number, string[]>>(new Map());
+  const [evidenceImages, setEvidenceImages] = useState<Map<number, string[]>>(new Map());
 
   useEffect(() => {
     const fetchAuditDetails = async () => {
@@ -128,7 +129,14 @@ const AuditDetailPage: React.FC = () => {
           category: r.categoryName || '',
           score: r.pointsAwarded || 0,
           notes: '',
-          image_url: undefined,
+          image_url: (r.imageUrls && r.imageUrls.length > 0) ? (() => {
+            let url = r.imageUrls[0];
+            if (url && url.startsWith('/')) {
+              const baseURL = process.env.REACT_APP_API_URL || `http://${window.location.hostname}:5000`;
+              url = baseURL.replace('/api', '') + url;
+            }
+            return url;
+          })() : undefined,
           response: (r.response === 'High' || r.response === 2 || r.response === 'high') ? 'high' :
             ((r.response === 'Medium' || r.response === 1 || r.response === 'medium') ? 'medium' : 'low'),
           points_awarded: r.pointsAwarded || 0,
@@ -145,6 +153,45 @@ const AuditDetailPage: React.FC = () => {
             status = 'in_progress';
           } else if (a.status === 'PendingApproval' || a.status === 'pending_approval' || a.status === 'pendingapproval' || a.status === 'Denetçi Kontrolünde') {
             status = 'pending';
+          }
+
+          // Convert backend images to full URLs if needed
+          if (a.images && a.images.length > 0) {
+            const actionImgs: string[] = [];
+            const evidenceImgs: string[] = [];
+
+            a.images.forEach((img: any) => {
+              let url = img.imagePath || img.ImagePath;
+              if (url && url.startsWith('/')) {
+                const baseURL = process.env.REACT_APP_API_URL || `http://${window.location.hostname}:5000`;
+                url = baseURL.replace('/api', '') + url;
+              }
+
+              if (img.imageType === 'Aksiyon' || img.ImageType === 'Aksiyon') {
+                actionImgs.push(url);
+              } else if (img.imageType === 'Kanit' || img.ImageType === 'Kanit') {
+                evidenceImgs.push(url);
+              }
+            });
+
+            if (actionImgs.length > 0) {
+              setActionImages(prev => {
+                const newMap = new Map(prev);
+                newMap.set(a.id || 0, actionImgs);
+                return newMap;
+              });
+            }
+
+            // Store evidence images in a separate state map if needed, or better yet, attach to the action object itself if possible.
+            // For now, let's just stick to the requested visual separation.
+            // We can add a new state for evidence images.
+            if (evidenceImgs.length > 0) {
+              setEvidenceImages(prev => {
+                const newMap = new Map(prev);
+                newMap.set(a.id || 0, evidenceImgs);
+                return newMap;
+              });
+            }
           }
 
           return {
@@ -678,38 +725,74 @@ const AuditDetailPage: React.FC = () => {
                         />
                       </TableCell>
                       <TableCell align="center">
-                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', flexWrap: 'wrap' }}>
-                          {/* Mock action images - will be replaced with real data from backend */}
-                          {actionImages.get(action.id) && actionImages.get(action.id)!.length > 0 ? (
-                            actionImages.get(action.id)!.map((img, idx) => (
-                              <Box
-                                key={idx}
-                                sx={{
-                                  width: 40,
-                                  height: 40,
-                                  cursor: 'pointer',
-                                  borderRadius: 1,
-                                  border: '1px solid #e0e0e0',
-                                  overflow: 'hidden',
-                                  '&:hover': { opacity: 0.8, borderColor: 'primary.main' },
-                                }}
-                                onClick={() => setImageDialog(img)}
-                              >
-                                <img
-                                  src={img}
-                                  alt={`Aksiyon görseli ${idx + 1}`}
-                                  style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                  }}
-                                />
+                        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                          {/* Aksiyon Images - Left Side */}
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                            {(actionImages.get(action.id) && actionImages.get(action.id)!.length > 0) && (
+                              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>Aksiyon</Typography>
+                            )}
+                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center' }}>
+                              {actionImages.get(action.id) && actionImages.get(action.id)!.length > 0 ? (
+                                actionImages.get(action.id)!.map((img, idx) => (
+                                  <Box
+                                    key={`act-${idx}`}
+                                    sx={{
+                                      width: 40,
+                                      height: 40,
+                                      cursor: 'pointer',
+                                      borderRadius: 1,
+                                      border: '1px solid #e0e0e0',
+                                      overflow: 'hidden',
+                                      '&:hover': { opacity: 0.8, borderColor: 'primary.main' },
+                                    }}
+                                    onClick={() => setImageDialog(img)}
+                                  >
+                                    <img
+                                      src={img}
+                                      alt={`Aksiyon görseli ${idx + 1}`}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    />
+                                  </Box>
+                                ))
+                              ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.7rem' }}>-</Typography>
+                              )}
+                            </Box>
+                          </Box>
+
+                          {/* Divider if both exist */}
+                          {((actionImages.get(action.id)?.length || 0) > 0 && (evidenceImages.get(action.id)?.length || 0) > 0) && (
+                            <Divider orientation="vertical" flexItem />
+                          )}
+
+                          {/* Evidence Images - Right Side */}
+                          {evidenceImages.get(action.id) && evidenceImages.get(action.id)!.length > 0 && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>Kanıt</Typography>
+                              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center' }}>
+                                {evidenceImages.get(action.id)!.map((img, idx) => (
+                                  <Box
+                                    key={`evd-${idx}`}
+                                    sx={{
+                                      width: 40,
+                                      height: 40,
+                                      cursor: 'pointer',
+                                      borderRadius: 1,
+                                      border: '1px solid #e0e0e0',
+                                      overflow: 'hidden',
+                                      '&:hover': { opacity: 0.8, borderColor: 'success.main' },
+                                    }}
+                                    onClick={() => setImageDialog(img)}
+                                  >
+                                    <img
+                                      src={img}
+                                      alt={`Kanıt görseli ${idx + 1}`}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    />
+                                  </Box>
+                                ))}
                               </Box>
-                            ))
-                          ) : (
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                              -
-                            </Typography>
+                            </Box>
                           )}
                         </Box>
                       </TableCell>

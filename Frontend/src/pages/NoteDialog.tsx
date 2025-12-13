@@ -22,6 +22,7 @@ interface NoteDialogProps {
     onConfirm: (note: string, imageUrl?: string) => void;
     confirmLabel?: string;
     requireImage?: boolean;
+    showImageUpload?: boolean;
 }
 
 const NoteDialog: React.FC<NoteDialogProps> = ({
@@ -31,7 +32,8 @@ const NoteDialog: React.FC<NoteDialogProps> = ({
     onClose,
     onConfirm,
     confirmLabel = 'Kaydet',
-    requireImage = false
+    requireImage = false,
+    showImageUpload = true
 }) => {
     const [note, setNote] = useState('');
     const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
@@ -95,57 +97,59 @@ const NoteDialog: React.FC<NoteDialogProps> = ({
                 )}
 
                 {/* Image Upload Section */}
-                <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                        Kanıt Görseli {requireImage && <span style={{ color: 'red' }}>*</span>}
-                    </Typography>
+                {showImageUpload && (
+                    <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                            Kanıt Görseli {requireImage && <span style={{ color: 'red' }}>*</span>}
+                        </Typography>
 
-                    {uploadError && (
-                        <Alert severity="error" sx={{ mb: 1, fontSize: '0.8rem' }}>
-                            {uploadError}
-                        </Alert>
-                    )}
+                        {uploadError && (
+                            <Alert severity="error" sx={{ mb: 1, fontSize: '0.8rem' }}>
+                                {uploadError}
+                            </Alert>
+                        )}
 
-                    {imageUrl ? (
-                        <Box sx={{ position: 'relative', display: 'inline-block' }}>
-                            <img
-                                src={imageUrl.startsWith('http') ? imageUrl :
-                                    `${process.env.REACT_APP_API_URL?.replace('/api', '') || `http://${window.location.hostname}:5000`}${imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl}`}
-                                alt="Kanıt görseli"
-                                style={{
-                                    maxWidth: '100%',
-                                    maxHeight: 200,
-                                    borderRadius: 4,
-                                    border: '1px solid #e0e0e0'
-                                }}
-                            />
+                        {imageUrl ? (
+                            <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                                <img
+                                    src={imageUrl.startsWith('http') ? imageUrl :
+                                        `${process.env.REACT_APP_API_URL?.replace('/api', '') || `http://${window.location.hostname}:5000`}${imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl}`}
+                                    alt="Kanıt görseli"
+                                    style={{
+                                        maxWidth: '100%',
+                                        maxHeight: 200,
+                                        borderRadius: 4,
+                                        border: '1px solid #e0e0e0'
+                                    }}
+                                />
+                                <Button
+                                    size="small"
+                                    color="error"
+                                    onClick={() => setImageUrl(undefined)}
+                                    sx={{ position: 'absolute', top: 4, right: 4, minWidth: 'auto', p: 0.5 }}
+                                >
+                                    ✕
+                                </Button>
+                            </Box>
+                        ) : (
                             <Button
-                                size="small"
-                                color="error"
-                                onClick={() => setImageUrl(undefined)}
-                                sx={{ position: 'absolute', top: 4, right: 4, minWidth: 'auto', p: 0.5 }}
+                                component="label"
+                                variant="outlined"
+                                startIcon={uploading ? <CircularProgress size={16} /> : <CloudUpload />}
+                                disabled={uploading}
+                                sx={{ width: '100%', py: 2 }}
                             >
-                                ✕
+                                {uploading ? 'Yükleniyor...' : 'Görsel Yükle'}
+                                <input
+                                    type="file"
+                                    hidden
+                                    accept="image/*"
+                                    onChange={handleFileSelect}
+                                />
                             </Button>
-                        </Box>
-                    ) : (
-                        <Button
-                            component="label"
-                            variant="outlined"
-                            startIcon={uploading ? <CircularProgress size={16} /> : <CloudUpload />}
-                            disabled={uploading}
-                            sx={{ width: '100%', py: 2 }}
-                        >
-                            {uploading ? 'Yükleniyor...' : 'Görsel Yükle'}
-                            <input
-                                type="file"
-                                hidden
-                                accept="image/*"
-                                onChange={handleFileSelect}
-                            />
-                        </Button>
-                    )}
-                </Box>
+                        )}
+                    </Box>
+                )}
 
                 <TextField
                     autoFocus

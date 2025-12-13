@@ -165,6 +165,15 @@ export interface Action {
   createdAt?: string; // PascalCase from backend
   updated_at?: string;
   updatedAt?: string; // PascalCase from backend
+  images?: ActionImage[]; // New images array from AksiyonGorselleri table
+}
+
+export interface ActionImage {
+  id: number;
+  actionId: number;
+  imagePath: string;
+  imageType: 'Aksiyon' | 'Kanit';
+  createdAt: string;
 }
 
 export interface ActionHistory {

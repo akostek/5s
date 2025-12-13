@@ -136,19 +136,40 @@ const NewAuditPage: React.FC = () => {
           const actionFormsData: ActionFormData[] = actions.map((action: any, index: number) => {
             // Load action images if exists
             const actionKey = `${questionId}-${index}`;
-            // Backend uses camelCase (imagePath), frontend uses snake_case (image_path)
-            const imagePath = action.imagePath || action.image_path;
-            if (imagePath) {
-              // If image_path is a single path, convert to array
-              const imagePaths = imagePath.split(',').map((path: string) => path.trim()).filter((path: string) => path);
-              const fullUrls = imagePaths.map((url: string) => {
-                if (url.startsWith('/')) {
-                  const baseURL = process.env.REACT_APP_API_URL || `http://${window.location.hostname}:5000`;
-                  return baseURL.replace('/api', '') + url;
-                }
-                return url;
-              });
-              actionImagesMap.set(actionKey, fullUrls);
+
+            // Check for images array (new format)
+            if (action.images && Array.isArray(action.images) && action.images.length > 0) {
+              const fullUrls = action.images
+                .filter((img: any) => img.imageType === 'Aksiyon' || img.ImageType === 'Aksiyon') // Filter only Action images
+                .map((img: any) => {
+                  let url = img.imagePath || img.ImagePath;
+                  if (url && url.startsWith('/')) {
+                    const baseURL = process.env.REACT_APP_API_URL || `http://${window.location.hostname}:5000`;
+                    url = baseURL.replace('/api', '') + url;
+                  }
+                  return url;
+                }).filter((url: string) => url);
+
+              if (fullUrls.length > 0) {
+                actionImagesMap.set(actionKey, fullUrls);
+              }
+            }
+            // Fallback for legacy format or flattened DTOs
+            else {
+              // Backend uses camelCase (imagePath), frontend uses snake_case (image_path)
+              const imagePath = action.imagePath || action.image_path;
+              if (imagePath) {
+                // If image_path is a single path, convert to array
+                const imagePaths = imagePath.split(',').map((path: string) => path.trim()).filter((path: string) => path);
+                const fullUrls = imagePaths.map((url: string) => {
+                  if (url.startsWith('/')) {
+                    const baseURL = process.env.REACT_APP_API_URL || `http://${window.location.hostname}:5000`;
+                    return baseURL.replace('/api', '') + url;
+                  }
+                  return url;
+                });
+                actionImagesMap.set(actionKey, fullUrls);
+              }
             }
 
             // Backend uses camelCase (suggestedActivity, plannedActivity, etc.)
@@ -395,9 +416,12 @@ const NewAuditPage: React.FC = () => {
 
     // Validate action forms for Low/Medium responses
     const responsesArray = Array.from(responses.entries());
+    console.log('[DEBUG] handleSave - responsesArray:', responsesArray);
+    console.log('[DEBUG] handleSave - actionForms:', Array.from(actionForms.entries()));
     for (const [questionId, response] of responsesArray) {
       if ((response === 'Low' || response === 'Medium')) {
         const actions = actionForms.get(questionId) || [];
+        console.log(`[DEBUG] Question ${questionId} (${response}) - actions:`, actions);
         if (actions.length === 0) {
           const question = questions.find(q => q.id === questionId);
           setError(`"${question?.text || 'Soru'}" için Düşük veya Orta seçildiğinde en az bir aksiyon planı gereklidir`);

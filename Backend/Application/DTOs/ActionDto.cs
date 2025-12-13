@@ -13,8 +13,6 @@ namespace Application.DTOs
         public string? SectorName { get; set; }
         public int? DirectorateId { get; set; }
         public string? DirectorateName { get; set; }
-        public string? ImagePath { get; set; }
-        public string? EvidenceImagePath { get; set; } // Kanıt görseli
         public string? Description { get; set; }
         public string? SuggestedActivity { get; set; }
         public string? PlannedActivity { get; set; }

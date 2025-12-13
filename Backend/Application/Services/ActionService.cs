@@ -26,6 +26,7 @@ namespace Application.Services
                     .Include(a => a.Directorate)
                     .Include(a => a.Question)
                         .ThenInclude(q => q.Category)
+                    .Include(a => a.Images)
                     .FirstOrDefaultAsync(a => a.Id == id);
 
                 return action != null ? MapToActionDto(action) : null;
@@ -115,6 +116,7 @@ namespace Application.Services
                     targetDate = DateTime.SpecifyKind(targetDate.Value, DateTimeKind.Utc);
                 }
 
+                // Create Action entity
                 var action = new Domain.Entities.Action
                 {
                     AuditId = createActionDto.AuditId,
@@ -129,33 +131,30 @@ namespace Application.Services
                     ResponsiblePerson = createActionDto.ResponsiblePerson ?? string.Empty,
                     Status = createActionDto.Status,
                     Priority = createActionDto.Priority,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    Images = new List<Domain.Entities.ActionImage>()
                 };
 
-                var actionsRepo = _unitOfWork.Repository<Domain.Entities.Action>();
-                await actionsRepo.AddAsync(action);
-                await _unitOfWork.SaveChangesAsync();
-
-                // Save images to AksiyonGorselleri table
+                // Add images if provided
                 if (createActionDto.ImageUrls != null && createActionDto.ImageUrls.Count > 0)
                 {
-                    var imageRepo = _unitOfWork.Repository<Domain.Entities.ActionImage>();
                     foreach (var imageUrl in createActionDto.ImageUrls)
                     {
                         if (!string.IsNullOrEmpty(imageUrl))
                         {
-                            var actionImage = new Domain.Entities.ActionImage
+                            action.Images.Add(new Domain.Entities.ActionImage
                             {
-                                ActionId = action.Id,
                                 ImagePath = imageUrl,
                                 ImageType = "Aksiyon",
                                 CreatedAt = DateTime.UtcNow
-                            };
-                            await imageRepo.AddAsync(actionImage);
+                            });
                         }
                     }
-                    await _unitOfWork.SaveChangesAsync();
                 }
+
+                var actionsRepo = _unitOfWork.Repository<Domain.Entities.Action>();
+                await actionsRepo.AddAsync(action);
+                await _unitOfWork.SaveChangesAsync();
 
                 return (await GetActionByIdAsync(action.Id))!;
             }
@@ -177,9 +176,6 @@ namespace Application.Services
 
             if (action == null)
                 throw new KeyNotFoundException($"Action with ID {id} not found");
-
-            if (updateActionDto.ImagePath != null)
-                action.ImagePath = updateActionDto.ImagePath;
 
             if (updateActionDto.Description != null)
                 action.Description = updateActionDto.Description;
@@ -205,6 +201,39 @@ namespace Application.Services
             action.UpdatedAt = DateTime.UtcNow;
 
             await actionsRepo.UpdateAsync(action);
+            
+            // Update images if provided
+            if (updateActionDto.ImageUrls != null)
+            {
+                var imageRepo = _unitOfWork.Repository<Domain.Entities.ActionImage>();
+                
+                // Get existing 'Aksiyon' images
+                var existingImages = await imageRepo.GetQueryable()
+                    .Where(img => img.ActionId == id && img.ImageType == "Aksiyon")
+                    .ToListAsync();
+
+                // Delete existing images
+                 foreach (var img in existingImages)
+                {
+                    imageRepo.Delete(img);
+                }
+                
+                // Add new images
+                foreach (var url in updateActionDto.ImageUrls)
+                {
+                     if (!string.IsNullOrEmpty(url))
+                     {
+                         await imageRepo.AddAsync(new Domain.Entities.ActionImage
+                         {
+                             ActionId = id,
+                             ImagePath = url,
+                             ImageType = "Aksiyon",
+                             CreatedAt = DateTime.UtcNow
+                         });
+                     }
+                }
+            }
+
             await _unitOfWork.SaveChangesAsync();
 
             return (await GetActionByIdAsync(action.Id))!;
@@ -351,8 +380,6 @@ namespace Application.Services
                 SectorName = action.Sector?.Name,
                 DirectorateId = action.DirectorateId,
                 DirectorateName = action.Directorate?.Name,
-                ImagePath = action.ImagePath,
-                EvidenceImagePath = action.EvidenceImagePath,
                 Description = action.Description,
                 SuggestedActivity = action.SuggestedActivity,
                 PlannedActivity = action.PlannedActivity,

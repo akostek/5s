@@ -56,7 +56,9 @@ import {
   PriorityHigh,
   Send,
   Undo,
+  PhotoLibrary
 } from '@mui/icons-material';
+import CollectionsIcon from '@mui/icons-material/Collections';
 import { format } from 'date-fns';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, useRole } from '../contexts/AuthContext';
@@ -66,6 +68,9 @@ import { Audit, Action } from '../types';
 import ActionHistoryDialog from './ActionHistoryDialog';
 import NoteDialog from './NoteDialog';
 import { History } from '@mui/icons-material';
+
+// ... existing types ...
+
 
 type RowStatus = 'draft' | 'published' | 'planlandı' | 'devam' | 'tamamlandı' | 'denetlendi';
 
@@ -107,19 +112,23 @@ const normalizeActionStatus = (status: any): NormalizedActionStatus => {
   const value = (status ?? '').toString().toLowerCase();
 
   // Turkish & English Mappings
-  if (value === 'inprogress' || value === 'in_progress' || value === 'devam ediyor') {
+  if (value === 'inprogress' || value === 'in_progress' || value === 'devam ediyor' || value === 'devamediyor') {
     return 'in_progress';
   }
 
-  if (value === 'closed' || value === 'completed' || value === 'kapandı' || value === 'tamamlandı') {
+  if (value === 'closed' || value === 'completed' || value === 'kapandı' || value === 'tamamlandı' || value === 'tamamlandi') {
     return 'closed';
   }
 
-  if (value === 'pending_approval' || value === 'pendingapproval' || value === 'denetçi kontrolünde' || value === 'denetçi onayı bekliyor') {
+  if (value === 'pending_approval' || value === 'pendingapproval' || value === 'denetçi kontrolünde' || value === 'denetçi onayı bekliyor' || value === 'denetçikontrolünde' || value === 'pendingapproval') {
     return 'pending_approval';
   }
 
-  // Default to open for 'open', 'açık', 'aksiyon sahibinde' or unknown
+  // Explicit check for Open synonyms
+  if (value === 'open' || value === 'açık' || value === 'acik' || value === 'aksiyon sahibinde') {
+    return 'open';
+  }
+
   return 'open';
 };
 
@@ -209,6 +218,7 @@ const mapActionDtoToAction = (action: any): Action => {
         ? (Number.isNaN(new Date(updatedAt).getTime()) ? undefined : updatedAt)
         : new Date(updatedAt).toISOString()
       : undefined,
+    images: action?.images ?? action?.Images, // Map images list from DTO
   };
 };
 
@@ -290,6 +300,12 @@ const AuditsPage: React.FC = () => {
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [noteDialogTitle, setNoteDialogTitle] = useState('');
   const [pendingStatusChange, setPendingStatusChange] = useState<{ id: number; status: string } | null>(null);
+
+  // Image Gallery State
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [galleryTitle, setGalleryTitle] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null); // For lightbox/enlarge
 
   const handleViewHistory = (actionId: number) => {
     setSelectedActionId(actionId);
@@ -2081,47 +2097,53 @@ const AuditsPage: React.FC = () => {
                               <TableCell sx={{ fontSize: '0.6rem', p: 0.5, textAlign: 'center', color: delayDays > 0 ? 'error.main' : 'text.secondary' }}>
                                 {delayDays > 0 ? delayDays : '-'}
                               </TableCell>
-                              <TableCell sx={{ p: 0.5 }}>
+                              <TableCell sx={{ p: 0.5, textAlign: 'center' }}>
                                 {(() => {
-                                  const imgPathRaw = action.image_path || action.imagePath;
-                                  if (!imgPathRaw) return <Typography sx={{ fontSize: '0.55rem', color: 'text.secondary' }}>-</Typography>;
-                                  const paths = imgPathRaw.split(',').map((p: string) => p.trim()).filter((p: string) => p);
+                                  // Get action images (imageType = 'Aksiyon')
+                                  const actionImages = action.images?.filter(img => img.imageType === 'Aksiyon') || [];
+                                  if (actionImages.length === 0) return <Typography sx={{ fontSize: '0.55rem', color: 'text.secondary' }}>-</Typography>;
                                   const baseUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || `http://${window.location.hostname}:5000`;
+
+                                  const handleOpenGallery = () => {
+                                    const images = actionImages.map(img =>
+                                      img.imagePath.startsWith('http') ? img.imagePath : `${baseUrl}${img.imagePath.startsWith('/') ? img.imagePath : '/' + img.imagePath}`
+                                    );
+                                    setGalleryImages(images);
+                                    setGalleryTitle('Aksiyon Görselleri');
+                                    setGalleryOpen(true);
+                                  };
+
                                   return (
-                                    <Box sx={{ display: 'flex', gap: 0.25 }}>
-                                      {paths.slice(0, 3).map((imgPath: string, idx: number) => {
-                                        const fullUrl = imgPath.startsWith('http') ? imgPath : `${baseUrl}${imgPath.startsWith('/') ? imgPath : '/' + imgPath}`;
-                                        return (
-                                          <Box
-                                            key={idx}
-                                            component="img"
-                                            src={fullUrl}
-                                            alt={`Görsel ${idx + 1}`}
-                                            sx={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 0.5, cursor: 'pointer', border: '1px solid #ddd' }}
-                                            onClick={() => window.open(fullUrl, '_blank')}
-                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                          />
-                                        );
-                                      })}
-                                    </Box>
+                                    <Tooltip title={`${actionImages.length} Görseli Görüntüle`}>
+                                      <IconButton size="small" onClick={handleOpenGallery} color="primary">
+                                        <CollectionsIcon fontSize="small" sx={{ fontSize: '1rem' }} />
+                                      </IconButton>
+                                    </Tooltip>
                                   );
                                 })()}
                               </TableCell>
-                              <TableCell sx={{ p: 0.5 }}>
+                              <TableCell sx={{ p: 0.5, textAlign: 'center' }}>
                                 {(() => {
-                                  const imgPath = action.evidence_image_path || action.evidenceImagePath;
-                                  if (!imgPath) return <Typography sx={{ fontSize: '0.55rem', color: 'text.secondary' }}>-</Typography>;
-                                  const fullUrl = imgPath.startsWith('http') ? imgPath :
-                                    `${process.env.REACT_APP_API_URL?.replace('/api', '') || `http://${window.location.hostname}:5000`}${imgPath.startsWith('/') ? imgPath : '/' + imgPath}`;
+                                  // Get evidence images (imageType = 'Kanit')
+                                  const evidenceImages = action.images?.filter(img => img.imageType === 'Kanit') || [];
+                                  if (evidenceImages.length === 0) return <Typography sx={{ fontSize: '0.55rem', color: 'text.secondary' }}>-</Typography>;
+                                  const baseUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || `http://${window.location.hostname}:5000`;
+
+                                  const handleOpenGallery = () => {
+                                    const images = evidenceImages.map(img =>
+                                      img.imagePath.startsWith('http') ? img.imagePath : `${baseUrl}${img.imagePath.startsWith('/') ? img.imagePath : '/' + img.imagePath}`
+                                    );
+                                    setGalleryImages(images);
+                                    setGalleryTitle('Kanıt Görselleri');
+                                    setGalleryOpen(true);
+                                  };
+
                                   return (
-                                    <Box
-                                      component="img"
-                                      src={fullUrl}
-                                      alt="Kanıt"
-                                      sx={{ width: 35, height: 35, objectFit: 'cover', borderRadius: 1, cursor: 'pointer', border: '1px solid #ddd' }}
-                                      onClick={() => window.open(fullUrl, '_blank')}
-                                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                    />
+                                    <Tooltip title={`${evidenceImages.length} Kanıtı Görüntüle`}>
+                                      <IconButton size="small" onClick={handleOpenGallery} color="success">
+                                        <CollectionsIcon fontSize="small" sx={{ fontSize: '1rem' }} />
+                                      </IconButton>
+                                    </Tooltip>
                                   );
                                 })()}
                               </TableCell>
@@ -2141,7 +2163,7 @@ const AuditsPage: React.FC = () => {
                               </TableCell>
                               <TableCell sx={{ fontSize: '0.6rem', p: 0.5 }}>
                                 <Chip
-                                  label={action.statusText || action.status_text || (typeof action.status === 'string' ? action.status : getActionStatusLabel(normalizeActionStatus(action.status)))}
+                                  label={getActionStatusLabel(normalizeActionStatus(action.status))}
                                   size="small"
                                   color={getActionStatusChipColor(normalizeActionStatus(action.status))}
                                   sx={{ fontSize: '0.5rem', height: 16 }}
@@ -2189,11 +2211,11 @@ const AuditsPage: React.FC = () => {
                                           <CheckCircle sx={{ fontSize: 16 }} />
                                         </IconButton>
                                       </Tooltip>
-                                      <Tooltip title="İade Et">
+                                      <Tooltip title="Revizyon İste">
                                         <IconButton
                                           size="small"
                                           color="warning"
-                                          onClick={() => handleRequestStatusChange(action, 'Open', 'Alan Sorumlusuna İade Et')}
+                                          onClick={() => handleRequestStatusChange(action, 'Open', 'Revizyon İste')}
                                           sx={{ p: 0.25 }}
                                         >
                                           <Undo sx={{ fontSize: 16 }} />
@@ -2627,7 +2649,82 @@ const AuditsPage: React.FC = () => {
           onConfirm={handleConfirmStatusChange}
           confirmLabel="Onayla"
           requireImage={pendingStatusChange?.status === 'PendingApproval'}
+          showImageUpload={pendingStatusChange?.status !== 'Open'} // Hide for "Revizyon İste" (requesting Open status)
         />
+
+        {/* Gallery Dialog */}
+        <Dialog open={galleryOpen} onClose={() => setGalleryOpen(false)} maxWidth="md" fullWidth>
+          <DialogTitle sx={{ m: 0, p: 2 }}>
+            {galleryTitle}
+            <IconButton
+              onClick={() => setGalleryOpen(false)}
+              sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+            >
+              <Close />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent dividers>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center' }}>
+              {galleryImages.map((img, idx) => (
+                <Box
+                  key={idx}
+                  sx={{
+                    width: 150,
+                    height: 150,
+                    borderRadius: 1,
+                    overflow: 'hidden',
+                    border: '1px solid #eee',
+                    cursor: 'pointer',
+                    '&:hover': { opacity: 0.8, boxShadow: 2 }
+                  }}
+                  onClick={() => setSelectedImage(img)}
+                >
+                  <img
+                    src={img}
+                    alt={`Galeri ${idx}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </Box>
+              ))}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setGalleryOpen(false)}>Kapat</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Lightbox / Full Image Dialog */}
+        <Dialog
+          open={!!selectedImage}
+          onClose={() => setSelectedImage(null)}
+          maxWidth={false}
+          PaperProps={{
+            sx: {
+              maxWidth: '95vw',
+              maxHeight: '95vh',
+              bgcolor: 'black',
+              boxShadow: 'none',
+              overflow: 'hidden',
+              borderRadius: 0
+            }
+          }}
+        >
+          <Box sx={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <IconButton
+              onClick={() => setSelectedImage(null)}
+              sx={{ position: 'absolute', right: 10, top: 10, color: 'white', bgcolor: 'rgba(0,0,0,0.5)', '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' } }}
+            >
+              <Close />
+            </IconButton>
+            {selectedImage && (
+              <img
+                src={selectedImage}
+                alt="Tam ekran"
+                style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain' }}
+              />
+            )}
+          </Box>
+        </Dialog>
       </Container>
     </Fade >
   );

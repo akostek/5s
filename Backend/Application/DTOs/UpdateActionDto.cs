@@ -5,6 +5,7 @@ namespace Application.DTOs
     public class UpdateActionDto
     {
         public string? ImagePath { get; set; }
+        public List<string>? ImageUrls { get; set; }
         public string? Description { get; set; }
         public string? SuggestedActivity { get; set; }
         public string? PlannedActivity { get; set; }
